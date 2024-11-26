@@ -4,6 +4,8 @@ All notable changes to the Aptos CLI will be captured in this file. This project
 
 # Unreleased
 - Downgrade bytecode version to v6 before calling the Revela decompiler, if possible, i.e. no enum types are used. This allows to continue to use Revela until the new decompiler is ready.
+- Set Compiler v2 as the default compiler and Move 2 as the default language version except for `aptos governance`.
+- Add new `--move-1` flag to use Compiler v1 and Move 1.  
 
 ## [5.0.0] - 2024/12/11
 - [**Breaking Change**] `aptos init` and `aptos account fund-with-faucet` no longer work directly with testnet, you must now use the minting page at the [Aptos dev docs](https://aptos.dev/network/faucet). 
