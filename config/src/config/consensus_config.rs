@@ -197,8 +197,8 @@ impl Default for ConsensusConfig {
             execution_backpressure: Some(ExecutionBackpressureConfig {
                 num_blocks_to_look_at: 20,
                 // TODO: also adjust this?
-                min_blocks_to_activate: 4,
-                percentile: 0.5,
+                min_blocks_to_activate: 8,
+                percentile: 0.75,
                 target_block_time_ms: 200,
                 min_block_time_ms_to_activate: 100,
                 // TODO: appropriate value?
