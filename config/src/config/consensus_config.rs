@@ -202,7 +202,7 @@ impl Default for ConsensusConfig {
                 target_block_time_ms: 200,
                 min_block_time_ms_to_activate: 100,
                 // TODO: appropriate value?
-                min_calibrated_block_gas_limit: 1000,
+                min_calibrated_block_gas_limit: 10000,
             }),
             pipeline_backpressure: vec![
                 PipelineBackpressureValues {
