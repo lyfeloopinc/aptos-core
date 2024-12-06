@@ -114,7 +114,7 @@ impl BlockRetrievalRequestV1 {
         }
     }
 
-    pub fn new_with_target_block_id(
+    pub fn new_with_target_round(
         block_id: HashValue,
         num_blocks: u64,
         target_block_id: HashValue,
@@ -160,6 +160,56 @@ pub struct BlockRetrievalRequestV2 {
     num_blocks: u64,
     // TODO: remove the Option, if it's not too painful
     target_epoch_and_round: Option<(u64, u64)>,
+}
+
+impl BlockRetrievalRequestV2 {
+    pub fn new(block_id: HashValue, num_blocks: u64) -> Self {
+        BlockRetrievalRequestV2 {
+            block_id,
+            num_blocks,
+            target_epoch_and_round: None,
+        }
+    }
+
+    pub fn new_with_target_round(
+        block_id: HashValue,
+        num_blocks: u64,
+        target_epoch: u64,
+        target_round: u64,
+    ) -> Self {
+        BlockRetrievalRequestV2 {
+            block_id,
+            num_blocks,
+            target_epoch_and_round: Some((target_epoch, target_round)),
+        }
+    }
+
+    pub fn block_id(&self) -> HashValue {
+        self.block_id
+    }
+
+    pub fn num_blocks(&self) -> u64 {
+        self.num_blocks
+    }
+
+    pub fn target_epoch_and_round(&self) -> Option<(u64, u64)> {
+        self.target_epoch_and_round
+    }
+
+    pub fn match_target_round(&self, epoch: u64, round: u64) -> bool {
+        self.target_epoch_and_round()
+            .map_or(false, |target| (epoch, round) <= target)
+    }
+}
+
+impl fmt::Display for BlockRetrievalRequestV2 {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "[BlockRetrievalRequestV2 starting from id {} with {} blocks]",
+            self.block_id, self.num_blocks
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
