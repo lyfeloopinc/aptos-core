@@ -199,7 +199,7 @@ impl Default for ConsensusConfig {
                 min_blocks_to_activate: 4,
                 percentile: 0.25,
                 target_block_time_ms: 200,
-                min_block_time_ms_to_activate: 100,
+                min_block_time_ms_to_activate: 10,
                 min_calibrated_block_gas_limit: 2000,
             }),
             pipeline_backpressure: vec![
