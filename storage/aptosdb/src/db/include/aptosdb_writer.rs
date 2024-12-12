@@ -298,9 +298,8 @@ impl AptosDB {
 
         let ledger_metadata_batch = SchemaBatch::new();
         let sharded_state_kv_batches = new_sharded_kv_schema_batch();
-        let state_kv_metadata_batch = SchemaBatch::new();
 
-        self.state_store.put_value_sets(
+        self.state_store.put_state_updates(
             chunk.state,
             chunk.state_update_refs,
             chunk.state_reads,
@@ -347,7 +346,7 @@ impl AptosDB {
                 self.state_kv_db
                     .commit(
                         chunk.expect_last_version(),
-                        state_kv_metadata_batch,
+                        None,
                         sharded_state_kv_batches,
                     )
                     .unwrap();

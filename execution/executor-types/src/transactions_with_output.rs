@@ -4,7 +4,7 @@
 use crate::metrics::TIMER;
 use aptos_metrics_core::TimerHelper;
 use aptos_storage_interface::state_store::state_update_refs::{
-    BatchedStateUpdateRefs, PerVersionStateUpdateRefs, StateUpdateRefs,
+    PerVersionStateUpdateRefs, StateUpdateRefs,
 };
 use aptos_types::transaction::{Transaction, TransactionOutput, Version};
 use itertools::izip;
@@ -122,14 +122,6 @@ impl TransactionsToKeep {
 
     pub fn per_version_state_update_refs(&self) -> &PerVersionStateUpdateRefs {
         &self.borrow_state_update_refs().per_version
-    }
-
-    pub fn state_update_refs_for_last_checkpoint(&self) -> Option<&BatchedStateUpdateRefs> {
-        self.borrow_state_update_refs().for_last_checkpoint.as_ref()
-    }
-
-    pub fn state_update_refs_for_latest(&self) -> Option<&BatchedStateUpdateRefs> {
-        self.borrow_state_update_refs().for_latest.as_ref()
     }
 
     pub fn ends_with_sole_checkpoint(&self) -> bool {

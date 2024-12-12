@@ -7,7 +7,6 @@ use crate::{
     db::test_helper::{arb_state_kv_sets, update_store},
     schema::jellyfish_merkle_node::JellyfishMerkleNodeSchema,
     state_restore::StateSnapshotRestore,
-    utils::new_sharded_kv_schema_batch,
     AptosDB,
 };
 use aptos_jellyfish_merkle::{
@@ -15,7 +14,7 @@ use aptos_jellyfish_merkle::{
     TreeReader,
 };
 use aptos_storage_interface::{
-    jmt_update_refs, jmt_updates, DbReader, DbWriter, StateSnapshotReceiver,
+    DbReader, DbWriter, StateSnapshotReceiver,
 };
 use aptos_temppath::TempPath;
 use aptos_types::{
@@ -25,7 +24,6 @@ use aptos_types::{
     state_store::state_key::inner::StateKeyTag,
     AptosCoinType,
 };
-use arr_macro::arr;
 use proptest::{collection::hash_map, prelude::*};
 use std::collections::HashMap;
 
@@ -33,49 +31,10 @@ fn put_value_set(
     state_store: &StateStore,
     value_set: Vec<(StateKey, StateValue)>,
     version: Version,
-    base_version: Option<Version>,
+    // FIXME(aldenhu)
+    _base_version: Option<Version>,
 ) -> HashValue {
-    /* FIXME(aldenhu)
-    let mut sharded_value_set = arr![HashMap::new(); 16];
-    let value_set: HashMap<_, _> = value_set
-        .iter()
-        .map(|(key, value)| {
-            sharded_value_set[key.get_shard_id() as usize].insert(key.clone(), Some(value.clone()));
-            (key, Some(value))
-        })
-        .collect();
-    let jmt_updates = jmt_updates(&value_set);
-
-    let root = state_store
-        .merklize_value_set(jmt_update_refs(&jmt_updates), version, base_version)
-        .unwrap();
-    let ledger_batch = SchemaBatch::new();
-    let sharded_state_kv_batches = new_sharded_kv_schema_batch();
-    let state_kv_metadata_batch = SchemaBatch::new();
-    state_store
-        .put_value_sets(
-            version,
-            &ShardedStateUpdateRefs::index_per_version_updates([value_set.clone().into_iter()], 1),
-            StateStorageUsage::new_untracked(),
-            None,
-            &ledger_batch,
-            &sharded_state_kv_batches,
-            /*put_state_value_indices=*/ false,
-            /*last_checkpoint_index=*/ None,
-        )
-        .unwrap();
-    state_store
-        .ledger_db
-        .metadata_db()
-        .write_schemas(ledger_batch)
-        .unwrap();
-    state_store
-        .state_kv_db
-        .commit(version, state_kv_metadata_batch, sharded_state_kv_batches)
-        .unwrap();
-    root
-     */
-    todo!()
+    state_store.commit_block_for_test(version, [value_set.into_iter().map(|(k, v)| (k, Some(v)))])
 }
 
 fn verify_value_and_proof(
@@ -478,7 +437,7 @@ proptest! {
         let tmp_dir1 = TempPath::new();
         let db1 = AptosDB::new_for_test_with_sharding(&tmp_dir1, 1000);
         let store1 = &db1.state_store;
-        init_sharded_store(store1, input.clone().into_iter());
+        init_store(store1, input.clone().into_iter());
 
         let version = (input.len() - 1) as Version;
         let expected_root_hash = store1.get_root_hash(version).unwrap();
@@ -580,7 +539,7 @@ proptest! {
         let mut version = 0;
         for batch in input {
             let next_version = version + batch.len() as Version;
-            let root_hash = update_store(store, batch.into_iter(), version, false);
+            let root_hash = update_store(store, batch.into_iter(), version);
 
             let last_version = next_version - 1;
             let snapshot = db
@@ -628,14 +587,5 @@ proptest! {
 
 // Initializes the state store by inserting one key at each version.
 fn init_store(store: &StateStore, input: impl Iterator<Item = (StateKey, StateValue)>) {
-    update_store(
-        store,
-        input.into_iter().map(|(k, v)| (k, Some(v))),
-        0,
-        false,
-    );
-}
-
-fn init_sharded_store(store: &StateStore, input: impl Iterator<Item = (StateKey, StateValue)>) {
-    update_store(store, input.into_iter().map(|(k, v)| (k, Some(v))), 0, true);
+    update_store(store, input.into_iter().map(|(k, v)| (k, Some(v))), 0);
 }

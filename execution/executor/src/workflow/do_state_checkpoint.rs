@@ -8,9 +8,8 @@ use aptos_executor_types::{
     execution_output::ExecutionOutput, state_checkpoint_output::StateCheckpointOutput,
 };
 use aptos_metrics_core::TimerHelper;
-use aptos_scratchpad::ProofRead;
 use aptos_storage_interface::state_store::state_summary::{
-    LedgerStateSummary, ProvableStateSummary, StateSummary,
+    LedgerStateSummary, ProvableStateSummary,
 };
 use itertools::Itertools;
 
@@ -27,10 +26,7 @@ impl DoStateCheckpoint {
 
         let state_summary = parent_state_summary.update(
             persisted_state_summary,
-            execution_output
-                .to_commit
-                .state_update_refs_for_last_checkpoint(),
-            execution_output.to_commit.state_update_refs_for_latest(),
+            execution_output.to_commit.state_update_refs(),
         )?;
 
         let state_checkpoint_hashes = Self::get_state_checkpoint_hashes(
@@ -77,9 +73,10 @@ impl DoStateCheckpoint {
 
             let mut out = vec![None; num_txns];
 
-            if let Some(updates) = execution_output
+            if let Some(updates) = &execution_output
                 .to_commit
-                .state_update_refs_for_last_checkpoint()
+                .state_update_refs()
+                .for_last_checkpoint
             {
                 let index = updates.num_versions - 1;
                 out[index] = Some(state_summary.last_checkpoint().root_hash());

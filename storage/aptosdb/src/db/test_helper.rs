@@ -4,35 +4,14 @@
 
 //! This module provides reusable helpers in tests.
 
-// FIXME(aldenhu)
-#![allow(dead_code)]
-#![allow(unused_imports)]
-#![allow(unused_variables)]
-
-#[cfg(test)]
-use crate::state_store::StateStore;
-#[cfg(test)]
-use crate::utils::new_sharded_kv_schema_batch;
-use crate::{
-    schema::{jellyfish_merkle_node::JellyfishMerkleNodeSchema, state_value::StateValueSchema},
-    state_store::current_state::LedgerStateWithSummary,
-    AptosDB,
+use crate::AptosDB;
+use aptos_crypto::{
+    hash::{CryptoHash, SPARSE_MERKLE_PLACEHOLDER_HASH},
+    HashValue,
 };
-use aptos_crypto::hash::{CryptoHash, SPARSE_MERKLE_PLACEHOLDER_HASH};
-#[cfg(test)]
-use aptos_crypto::HashValue;
-use aptos_executor_types::ProofReader;
-use aptos_jellyfish_merkle::node_type::{Node, NodeKey};
-#[cfg(test)]
-use aptos_schemadb::SchemaBatch;
 use aptos_scratchpad::SparseMerkleTree;
-use aptos_storage_interface::{
-    state_store::{state_delta::StateDelta, state_summary::StateWithSummary},
-    DbReader, Order, Result,
-};
+use aptos_storage_interface::{DbReader, Order, Result};
 use aptos_temppath::TempPath;
-#[cfg(test)]
-use aptos_types::transaction::TransactionAuxiliaryData;
 use aptos_types::{
     account_address::AccountAddress,
     contract_event::ContractEvent,
@@ -43,7 +22,9 @@ use aptos_types::{
     state_store::{
         state_key::StateKey, state_storage_usage::StateStorageUsage, state_value::StateValue,
     },
-    transaction::{Transaction, TransactionInfo, TransactionToCommit, Version},
+    transaction::{
+        Transaction, TransactionAuxiliaryData, TransactionInfo, TransactionToCommit, Version,
+    },
     write_set::TransactionWrite,
 };
 use proptest::{collection::vec, prelude::*, sample::Index};
@@ -73,58 +54,11 @@ prop_compose! {
 
 #[cfg(test)]
 pub(crate) fn update_store(
-    store: &StateStore,
+    store: &crate::state_store::StateStore,
     input: impl Iterator<Item = (StateKey, Option<StateValue>)>,
     first_version: Version,
-    enable_sharding: bool,
 ) -> HashValue {
-    /*
-    use aptos_storage_interface::{
-        jmt_update_refs, jmt_updates,
-        state_store::sharded_state_update_refs::ShardedStateUpdateRefs,
-    };
-
-    let mut root_hash = *aptos_crypto::hash::SPARSE_MERKLE_PLACEHOLDER_HASH;
-    for (i, (key, value)) in input.enumerate() {
-        let value_state_set = vec![(&key, value.as_ref())].into_iter().collect();
-        let jmt_updates = jmt_updates(&value_state_set);
-        let version = first_version + i as Version;
-        root_hash = store
-            .merklize_value_set(
-                jmt_update_refs(&jmt_updates),
-                version,
-                version.checked_sub(1),
-            )
-            .unwrap();
-        let ledger_batch = SchemaBatch::new();
-        let sharded_state_kv_batches = new_sharded_kv_schema_batch();
-        let schema_batch = SchemaBatch::new();
-        store
-            .put_value_sets(
-                version,
-                &ShardedStateUpdateRefs::index_per_version_updates([[(&key, value.as_ref())]], 1),
-                StateStorageUsage::new_untracked(),
-                None,
-                &ledger_batch,
-                &sharded_state_kv_batches,
-                /*put_state_value_indices=*/ enable_sharding,
-                /*last_checkpoint_index=*/ None,
-            )
-            .unwrap();
-        store
-            .ledger_db
-            .metadata_db()
-            .write_schemas(ledger_batch)
-            .unwrap();
-        store
-            .state_kv_db
-            .commit(version, schema_batch, sharded_state_kv_batches)
-            .unwrap();
-    }
-    root_hash
-    FIXME(aldenhu)
-     */
-    todo!()
+    store.commit_block_for_test(first_version, input.map(|(key, value)| [(key, value)]))
 }
 
 pub fn update_in_memory_state(
@@ -866,8 +800,7 @@ pub fn verify_committed_transactions(
     verify_account_txns(db, group_txns_by_account(txns_to_commit), ledger_info);
 }
 
-#[cfg(test)]
-pub(crate) fn put_transaction_infos(
+pub fn put_transaction_infos(
     db: &AptosDB,
     version: Version,
     txn_infos: &[TransactionInfo],
@@ -877,8 +810,7 @@ pub(crate) fn put_transaction_infos(
         .unwrap()
 }
 
-#[cfg(test)]
-pub(crate) fn put_transaction_auxiliary_data(
+pub fn put_transaction_auxiliary_data(
     db: &AptosDB,
     version: Version,
     auxiliary_data: &[TransactionAuxiliaryData],
@@ -902,7 +834,6 @@ pub fn test_sync_transactions_impl(
     for (batch_idx, (txns_to_commit, ledger_info_with_sigs)) in input.iter().enumerate() {
         // if batch has more than 2 transactions, save them in two batches
         let batch1_len = txns_to_commit.len() / 2;
-        let base_state_version = cur_ver.checked_sub(1);
         if batch1_len > 0 {
             let txns_to_commit_batch = &txns_to_commit[..batch1_len];
             db.save_transactions_for_test(

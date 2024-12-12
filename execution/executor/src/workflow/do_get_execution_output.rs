@@ -23,10 +23,8 @@ use aptos_executor_types::{
 use aptos_experimental_runtimes::thread_manager::THREAD_MANAGER;
 use aptos_logger::prelude::*;
 use aptos_metrics_core::TimerHelper;
-use aptos_sdk::types::HardwareWalletType::Ledger;
 use aptos_storage_interface::state_store::{
-    state::LedgerState,
-    state_view::cached_state_view::{CachedStateView, ShardedStateCache},
+    state::LedgerState, state_view::cached_state_view::CachedStateView,
 };
 #[cfg(feature = "consensus-only-perf-test")]
 use aptos_types::transaction::ExecutionStatus;
@@ -131,6 +129,7 @@ impl DoGetExecutionOutput {
             state_view,
             block_end_info,
             append_state_checkpoint_to_block,
+            false, // prime_state_cache
         )
     }
 
@@ -164,6 +163,7 @@ impl DoGetExecutionOutput {
             state_view,
             None, // block end info
             append_state_checkpoint_to_block,
+            false, // prime_state_cache
         )
     }
 
@@ -173,16 +173,6 @@ impl DoGetExecutionOutput {
         parent_state: &LedgerState,
         state_view: CachedStateView,
     ) -> Result<ExecutionOutput> {
-        // collect all accounts touched and dedup
-        let write_set = transaction_outputs
-            .iter()
-            .map(|o| o.write_set())
-            .collect::<Vec<_>>();
-
-        // TODO(aldenhu): optimize: state updates are gone through here once and again in the parser
-        // prime the state cache by fetching all touched accounts
-        state_view.prime_cache_by_write_sets(write_set)?;
-
         let out = Parser::parse(
             state_view.next_version(),
             transactions,
@@ -191,6 +181,7 @@ impl DoGetExecutionOutput {
             state_view,
             None, // block end info
             None, // append state checkpoint to block
+            true, // prime state cache
         )?;
 
         let ret = out.clone();
@@ -303,6 +294,7 @@ impl Parser {
         base_state_view: CachedStateView,
         block_end_info: Option<BlockEndInfo>,
         append_state_checkpoint_to_block: Option<HashValue>,
+        prime_state_cache: bool,
     ) -> Result<ExecutionOutput> {
         let _timer = OTHER_TIMERS.timer_with(&["parse_raw_output"]);
 
@@ -347,10 +339,13 @@ impl Parser {
                 .transpose()?
         };
 
-        let result_state = parent_state.update(
+        if prime_state_cache {
+            base_state_view.prime_cache(to_commit.state_update_refs())?;
+        }
+
+        let result_state = parent_state.update_with_memorized_reads(
             base_state_view.persisted_state(),
-            to_commit.state_update_refs_for_last_checkpoint(),
-            to_commit.state_update_refs_for_latest(),
+            to_commit.state_update_refs(),
             base_state_view.memorized_reads(),
         );
         let state_cache = base_state_view.into_state_cache();
@@ -574,6 +569,7 @@ mod tests {
             CachedStateView::new_dummy(&state),
             None,
             None,
+            false,
         )
         .unwrap();
         assert_eq!(

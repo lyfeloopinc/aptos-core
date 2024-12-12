@@ -4,26 +4,30 @@
 use crate::{
     metrics::TIMER,
     state_store::{
-        state::State, state_delta::StateDelta, state_update::StateCacheEntry,
+        state::State,
+        state_delta::StateDelta,
+        state_update::StateCacheEntry,
+        state_update_refs::{BatchedStateUpdateRefs, StateUpdateRefs},
         state_view::db_state_view::DbStateView,
     },
     DbReader,
 };
 use anyhow::Result;
+use aptos_metrics_core::TimerHelper;
 use aptos_types::{
     state_store::{
         state_key::StateKey, state_storage_usage::StateStorageUsage, state_value::StateValue,
         StateViewId, StateViewResult, TStateView,
     },
     transaction::Version,
-    write_set::WriteSet,
 };
 use core::fmt;
 use dashmap::DashMap;
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
+use rayon::prelude::*;
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     fmt::{Debug, Formatter},
     sync::Arc,
 };
@@ -126,28 +130,37 @@ impl CachedStateView {
         }
     }
 
-    // TODO(aldenhu): combine with StateStore::prime_state_cache
-    pub fn prime_cache_by_write_sets<'a, T: IntoIterator<Item = &'a WriteSet> + Send>(
-        &self,
-        write_sets: T,
-    ) -> StateViewResult<()> {
-        let _timer = TIMER
-            .with_label_values(&["prime_cache_by_write_sets"])
-            .start_timer();
+    pub fn prime_cache(&self, updates: &StateUpdateRefs) -> Result<()> {
+        let _timer = TIMER.timer_with(&["prime_state_cache"]);
 
-        // TODO(aldenhu): avoid collecting to the same hashset
-        IO_POOL.scope(|s| {
-            write_sets
-                .into_iter()
-                .flat_map(|write_set| write_set.iter())
-                .map(|(key, _)| key)
-                .collect::<HashSet<_>>()
-                .into_iter()
-                .for_each(|key| {
-                    s.spawn(move |_| {
-                        self.get_state_value(key).expect("Must succeed.");
-                    })
-                });
+        IO_POOL.install(|| {
+            if let Some(updates) = &updates.for_last_checkpoint {
+                self.prime_cache_for_batched_updates(updates)?;
+            }
+            if let Some(updates) = &updates.for_latest {
+                self.prime_cache_for_batched_updates(updates)?;
+            }
+            Ok(())
+        })
+    }
+
+    fn prime_cache_for_batched_updates(&self, updates: &BatchedStateUpdateRefs) -> Result<()> {
+        updates
+            .shards
+            .par_iter()
+            .try_for_each(|shard| self.prime_cache_for_keys(shard.keys().cloned()))
+    }
+
+    fn prime_cache_for_keys<'a, T: IntoIterator<Item = &'a StateKey> + Send>(
+        &self,
+        keys: T,
+    ) -> Result<()> {
+        rayon::scope(|s| {
+            keys.into_iter().for_each(|key| {
+                s.spawn(move |_| {
+                    self.get_state_value(key).expect("Must succeed.");
+                })
+            });
         });
         Ok(())
     }
@@ -186,6 +199,10 @@ impl CachedStateView {
 
     pub fn next_version(&self) -> Version {
         self.speculative.next_version()
+    }
+
+    pub fn current_state(&self) -> &State {
+        &self.speculative.current
     }
 
     pub fn persisted_state(&self) -> &State {

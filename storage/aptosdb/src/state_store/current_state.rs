@@ -4,14 +4,13 @@
 use aptos_crypto::hash::SPARSE_MERKLE_PLACEHOLDER_HASH;
 use aptos_storage_interface::state_store::{
     state::LedgerState,
-    state_delta::StateDelta,
     state_summary::{LedgerStateSummary, StateWithSummary},
 };
 use aptos_types::{state_store::state_storage_usage::StateStorageUsage, transaction::Version};
 use derive_more::{Deref, DerefMut};
 
 #[derive(Clone, Debug, Deref, DerefMut)]
-pub(crate) struct LedgerStateWithSummary {
+pub struct LedgerStateWithSummary {
     #[deref]
     #[deref_mut]
     latest: StateWithSummary,

@@ -18,7 +18,7 @@ pub struct ChunkToCommit<'a> {
     pub state: &'a LedgerState,
     pub state_summary: &'a LedgerStateSummary,
     pub state_update_refs: &'a PerVersionStateUpdateRefs<'a>,
-    pub state_reads: Option<&'a ShardedStateCache>,
+    pub state_reads: &'a ShardedStateCache,
     pub is_reconfig: bool,
 }
 
@@ -39,7 +39,6 @@ impl<'a> ChunkToCommit<'a> {
         self.next_version() - 1
     }
 
-    // FIXME(aldenhu): check efficiency (did we clone more than needed?)
     pub fn state(&self) -> StateWithSummary {
         StateWithSummary::new(
             self.state.latest().clone(),

@@ -6,15 +6,17 @@ use crate::{
     state_store::{
         state_delta::StateDelta,
         state_update::{StateUpdate, StateUpdateRef},
-        state_update_refs::BatchedStateUpdateRefs,
-        state_view::cached_state_view::{ShardedStateCache, StateCacheShard},
+        state_update_refs::{BatchedStateUpdateRefs, StateUpdateRefs},
+        state_view::cached_state_view::{CachedStateView, ShardedStateCache, StateCacheShard},
         NUM_STATE_SHARDS,
     },
+    DbReader,
 };
+use anyhow::Result;
 use aptos_experimental_layered_map::{LayeredMap, MapLayer};
 use aptos_metrics_core::TimerHelper;
 use aptos_types::{
-    state_store::{state_key::StateKey, state_storage_usage::StateStorageUsage},
+    state_store::{state_key::StateKey, state_storage_usage::StateStorageUsage, StateViewId},
     transaction::Version,
 };
 use derive_more::Deref;
@@ -90,7 +92,6 @@ impl State {
         Arc::ptr_eq(&self.shards, &rhs.shards)
     }
 
-    // FIXME(aldenhu): check call sites, are we doing duplicate checks?
     pub fn is_descendant_of(&self, rhs: &State) -> bool {
         self.shards[0].is_descendant_of(&rhs.shards[0])
     }
@@ -222,34 +223,59 @@ impl LedgerState {
         self.latest.is_the_same(&self.last_checkpoint)
     }
 
-    pub fn update<'kv>(
+    /// In the execution pipeline, at the time of state update, the reads during execution
+    /// have already been recorded.
+    pub fn update_with_memorized_reads(
         &self,
         persisted_snapshot: &State,
-        updates_for_last_checkpoint: Option<&BatchedStateUpdateRefs<'kv>>,
-        updates_for_latest: Option<&BatchedStateUpdateRefs<'kv>>,
-        state_cache: &ShardedStateCache,
+        updates: &StateUpdateRefs,
+        reads: &ShardedStateCache,
     ) -> LedgerState {
         let _timer = TIMER.timer_with(&["ledger_state__update"]);
 
-        let last_checkpoint = if let Some(updates) = updates_for_last_checkpoint {
-            self.latest()
-                .update(persisted_snapshot, updates, state_cache)
+        let last_checkpoint = if let Some(updates) = &updates.for_last_checkpoint {
+            self.latest().update(persisted_snapshot, updates, reads)
         } else {
             self.last_checkpoint.clone()
         };
 
-        let base_of_latest = if updates_for_last_checkpoint.is_none() {
+        let base_of_latest = if updates.for_last_checkpoint.is_none() {
             self.latest()
         } else {
             &last_checkpoint
         };
-        let latest = if let Some(updates) = updates_for_latest {
-            base_of_latest.update(persisted_snapshot, updates, state_cache)
+        let latest = if let Some(updates) = &updates.for_latest {
+            base_of_latest.update(persisted_snapshot, updates, reads)
         } else {
             base_of_latest.clone()
         };
 
         LedgerState::new(latest, last_checkpoint)
+    }
+
+    /// Old values of the updated keys are read from the DbReader at the version of the
+    /// `persisted_snapshot`.
+    pub fn update_with_db_reader(
+        &self,
+        persisted_snapshot: &State,
+        updates: &StateUpdateRefs,
+        reader: Arc<dyn DbReader>,
+    ) -> Result<(LedgerState, ShardedStateCache)> {
+        let state_view = CachedStateView::new_impl(
+            StateViewId::Miscellaneous,
+            reader,
+            persisted_snapshot.clone(),
+            self.latest().clone(),
+        );
+        state_view.prime_cache(updates)?;
+
+        let updated = self.update_with_memorized_reads(
+            persisted_snapshot,
+            updates,
+            state_view.memorized_reads(),
+        );
+        let state_reads = state_view.into_state_cache();
+        Ok((updated, state_reads))
     }
 
     pub fn is_the_same(&self, other: &Self) -> bool {
