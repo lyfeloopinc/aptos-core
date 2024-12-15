@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::{
-    db::test_helper::{arb_state_kv_sets, update_store},
+    db::test_helper::{update_store},
     schema::jellyfish_merkle_node::JellyfishMerkleNodeSchema,
     state_restore::StateSnapshotRestore,
     AptosDB,
@@ -13,9 +13,7 @@ use aptos_jellyfish_merkle::{
     node_type::{Node, NodeKey},
     TreeReader,
 };
-use aptos_storage_interface::{
-    DbReader, DbWriter, StateSnapshotReceiver,
-};
+use aptos_storage_interface::{DbReader, DbWriter, StateSnapshotReceiver};
 use aptos_temppath::TempPath;
 use aptos_types::{
     account_address::AccountAddress,
@@ -25,14 +23,13 @@ use aptos_types::{
     AptosCoinType,
 };
 use proptest::{collection::hash_map, prelude::*};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
+use crate::db::test_helper::arb_state_kv_sets_with_genesis;
 
 fn put_value_set(
     state_store: &StateStore,
     value_set: Vec<(StateKey, StateValue)>,
     version: Version,
-    // FIXME(aldenhu)
-    _base_version: Option<Version>,
 ) -> HashValue {
     state_store.commit_block_for_test(version, [value_set.into_iter().map(|(k, v)| (k, Some(v)))])
 }
@@ -102,7 +99,6 @@ fn test_state_store_reader_writer() {
         store,
         vec![(key1.clone(), value1.clone())],
         0, /* version */
-        None,
     );
     verify_value_and_proof(store, key1.clone(), Some(&value1), 0, root);
 
@@ -120,7 +116,6 @@ fn test_state_store_reader_writer() {
             (key3.clone(), value3.clone()),
         ],
         1, /* version */
-        Some(0),
     );
 
     verify_value_and_proof(store, key1, Some(&value1_update), 1, root);
@@ -171,7 +166,6 @@ fn test_get_values_by_key_prefix() {
             (key2.clone(), value2_v0.clone()),
         ],
         0,
-        None,
     );
 
     let key_value_map = traverse_values(store, &account_key_prefix, 0);
@@ -191,7 +185,6 @@ fn test_get_values_by_key_prefix() {
             (key4.clone(), value4_v1.clone()),
         ],
         1,
-        Some(0),
     );
 
     // Ensure that we still get only values for key1 and key2 for version 0 after the update
@@ -214,7 +207,7 @@ fn test_get_values_by_key_prefix() {
 
     let account1_key_prefix = StateKeyPrefix::new(StateKeyTag::AccessPath, address1.to_vec());
 
-    put_value_set(store, vec![(key5.clone(), value5_v2.clone())], 2, Some(1));
+    put_value_set(store, vec![(key5.clone(), value5_v2.clone())], 2);
 
     // address1 did not exist in version 0 and 1.
     let key_value_map = traverse_values(store, &account1_key_prefix, 0);
@@ -237,19 +230,18 @@ pub fn test_get_state_snapshot_before() {
     // Empty store
     assert_eq!(store.get_state_snapshot_before(0).unwrap(), None,);
 
-    // put in genesis
-    let kv = vec![(StateKey::raw(b"key"), StateValue::from(b"value".to_vec()))];
-    let hash = put_value_set(store, kv.clone(), 0, None);
+    // put in genesis (version 0)
+    let kv = vec![(
+        StateKey::raw(b"key"),
+        Some(StateValue::from(b"value".to_vec())),
+    )];
+    let hash = store.commit_block_for_test(0, [kv.clone()]);
     assert_eq!(store.get_state_snapshot_before(0).unwrap(), None);
     assert_eq!(store.get_state_snapshot_before(1).unwrap(), Some((0, hash)));
     assert_eq!(store.get_state_snapshot_before(2).unwrap(), Some((0, hash)));
 
-    // hack: VersionData expected on every version, so duplicate the data at version 1
-    let usage = store.get_usage(Some(0)).unwrap();
-    db.ledger_db.metadata_db().put_usage(1, usage).unwrap();
-
-    // put in another version
-    put_value_set(store, kv, 2, Some(0));
+    // put in snapshot at version 2
+    let hash = store.commit_block_for_test(1, [vec![], kv]);
     assert_eq!(store.get_state_snapshot_before(4).unwrap(), Some((2, hash)));
     assert_eq!(store.get_state_snapshot_before(3).unwrap(), Some((2, hash)));
     assert_eq!(store.get_state_snapshot_before(2).unwrap(), Some((0, hash)));
@@ -301,30 +293,33 @@ proptest! {
 
     #[test]
     fn test_get_account_iter(
-        input in hash_map(any::<StateKey>(), any::<StateValue>(), 1..200)
+        kvs_per_version in arb_state_kv_sets_with_genesis(5, 3, 5)
     ) {
-        // Convert to a vector so iteration order becomes deterministic.
-        let kvs: Vec<_> = input.into_iter().collect();
-
         let tmp_dir = TempPath::new();
         let db = AptosDB::new_for_test(&tmp_dir);
         let store = &db.state_store;
-        init_store(store, kvs.clone().into_iter());
+        for (ver, kvs) in kvs_per_version.iter().cloned().enumerate() {
+            store.commit_block_for_test(ver as Version, [kvs]);
+        }
 
+        // Ordered by key hash, tracking the latest state (None if deleted)
+        let mut expected: BTreeMap<HashValue, Option<(StateKey, StateValue)>> = BTreeMap::new();
         // Test iterator at each version.
-        for i in 0..kvs.len() {
-            let actual_values = db
+        for (ver, kvs) in kvs_per_version.into_iter().enumerate() {
+            expected.extend(kvs.into_iter().map(|(k, v)| (k.hash(), v.map(|v| (k, v)))));
+            let actual = db
                 .get_backup_handler()
-                .get_state_item_iter(i as Version, 0, usize::MAX)
+                .get_state_item_iter(ver as Version, 0, usize::MAX)
                 .unwrap()
                 .collect::<Result<Vec<_>>>()
                 .unwrap();
-            let mut expected_values: Vec<_> = kvs[..=i]
-                .iter()
-                .map(|(key, value)| (key.clone(), value.clone()))
-                .collect();
-            expected_values.sort_unstable_by_key(|item| item.0.hash());
-            prop_assert_eq!(actual_values, expected_values);
+
+            prop_assert!(
+                itertools::equal(
+                    actual.iter(),
+                    expected.iter().filter_map(|(_h, kv)| kv.as_ref())
+                )
+            );
         }
     }
 
@@ -530,7 +525,7 @@ proptest! {
 
     #[test]
     fn test_get_usage(
-        input in arb_state_kv_sets(10, 5, 5)
+        input in arb_state_kv_sets_with_genesis(5, 3, 5)
     ) {
         let tmp_dir = TempPath::new();
         let db = AptosDB::new_for_test(&tmp_dir);

@@ -27,28 +27,77 @@ use aptos_types::{
     },
     write_set::TransactionWrite,
 };
-use proptest::{collection::vec, prelude::*, sample::Index};
+use itertools::Itertools;
+use proptest::{
+    collection::{hash_set, vec},
+    prelude::*,
+    sample::Index,
+};
 use std::{collections::HashMap, fmt::Debug};
+
+/// hack: special keys to guarantee state db has at least two keys
+fn kv_genesis_keys() -> Vec<StateKey> {
+    vec![StateKey::raw(b"g1"), StateKey::raw(b"g2")]
+}
+
+/// hack: special keys to guarantee state db has at least two keys
+pub fn kv_store_genesis() -> Vec<(StateKey, Option<StateValue>)> {
+    kv_genesis_keys()
+        .into_iter()
+        .map(|k| (k, Some(StateValue::from(b"genesis_value".to_vec()))))
+        .collect()
+}
+
+fn arb_key_universe(size: usize) -> impl Strategy<Value = Vec<StateKey>> {
+    let genesis_keys = kv_genesis_keys();
+    hash_set(
+        any::<StateKey>().prop_filter(
+            "hack: special keys to guarantee state db has at least two keys",
+            move |k| genesis_keys.iter().all(|gk| gk != k),
+        ),
+        size,
+    )
+    .prop_map(move |keys| keys.into_iter().collect_vec())
+}
 
 prop_compose! {
     pub fn arb_state_kv_sets(
         key_universe_size: usize,
         max_update_set_size: usize,
-        max_versions: usize
-    )
-    (
-        keys in vec(any::<StateKey>(), key_universe_size),
-        input in vec(vec((any::<Index>(), any::<Option<StateValue>>()), 1..max_update_set_size), 1..max_versions)
+        max_versions: usize,
+    )(
+        keys in arb_key_universe(key_universe_size),
+        input in vec(
+            vec(
+                any::<(Index, Option<StateValue>)>(),
+                1..=max_update_set_size,
+            ),
+            1..=max_versions
+        )
     ) -> Vec<Vec<(StateKey, Option<StateValue>)>> {
-            input
+        input
             .into_iter()
             .map(|kvs|
                 kvs
                 .into_iter()
                 .map(|(idx, value)| (idx.get(&keys).clone(), value))
-                .collect::<Vec<_>>()
+                .collect_vec()
             )
-            .collect::<Vec<_>>()
+            .collect_vec()
+    }
+}
+
+prop_compose! {
+    pub fn arb_state_kv_sets_with_genesis(
+        key_universe_size: usize,
+        max_update_set_size: usize,
+        max_versions: usize,
+    )(
+        sets in arb_state_kv_sets(key_universe_size, max_update_set_size, max_versions - 1),
+    ) -> Vec<Vec<(StateKey, Option<StateValue>)>> {
+        std::iter::once(kv_store_genesis())
+        .chain(sets.into_iter())
+        .collect_vec()
     }
 }
 

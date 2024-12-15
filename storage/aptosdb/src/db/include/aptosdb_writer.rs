@@ -305,8 +305,6 @@ impl AptosDB {
             chunk.state_reads,
             &ledger_metadata_batch,
             &sharded_state_kv_batches,
-            // TODO(grao): remove after APIs migrated off the DB to the indexer.
-            self.state_store.state_kv_db.enabled_sharding(),
         )?;
 
         // Write block index if event index is skipped.

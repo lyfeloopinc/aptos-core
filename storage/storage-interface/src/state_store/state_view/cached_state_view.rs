@@ -177,18 +177,18 @@ impl CachedStateView {
         memorized
     }
 
-    fn parent_version(&self) -> Option<Version> {
-        self.speculative.parent_version()
+    fn base_version(&self) -> Option<Version> {
+        self.speculative.base_version()
     }
 
     fn get_uncached(&self, state_key: &StateKey) -> Result<StateCacheEntry> {
         let ret = if let Some(update) = self.speculative.get_state_update(state_key) {
             // found in speculative state, can be either a new value or a deletion
             update.to_state_value_with_version()
-        } else if let Some(parent_version) = self.parent_version() {
+        } else if let Some(base_version) = self.base_version() {
             StateCacheEntry::from_tuple_opt(
                 self.reader
-                    .get_state_value_with_version_by_version(state_key, parent_version)?,
+                    .get_state_value_with_version_by_version(state_key, base_version)?,
             )
         } else {
             StateCacheEntry::NonExistent

@@ -53,12 +53,12 @@ impl State {
     }
 
     pub fn new_with_updates(
-        next_version: Version,
+        version: Option<Version>,
         shards: Arc<[MapLayer<StateKey, StateUpdate>; NUM_STATE_SHARDS]>,
         usage: StateStorageUsage,
     ) -> Self {
         Self {
-            next_version,
+            next_version: version.map_or(0, |v| v + 1),
             shards,
             usage,
         }
@@ -142,7 +142,7 @@ impl State {
         let shards = Arc::new(shards.try_into().expect("Known to be 16 shards."));
         let usage = self.update_usage(usage_delta_per_shard);
 
-        State::new_with_updates(updates.next_version(), shards, usage)
+        State::new_with_updates(updates.last_version(), shards, usage)
     }
 
     fn update_usage(&self, usage_delta_per_shard: Vec<(i64, i64)>) -> StateStorageUsage {

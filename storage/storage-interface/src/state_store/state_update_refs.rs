@@ -79,6 +79,10 @@ impl<'kv> BatchedStateUpdateRefs<'kv> {
     pub fn next_version(&self) -> Version {
         self.first_version + self.num_versions as Version
     }
+
+    pub fn last_version(&self) -> Option<Version> {
+        self.next_version().checked_sub(1)
+    }
 }
 
 pub struct StateUpdateRefs<'kv> {

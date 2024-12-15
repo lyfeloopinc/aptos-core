@@ -690,7 +690,6 @@ impl StateStore {
         state_update_refs: &StateUpdateRefs,
         ledger_batch: &SchemaBatch,
         sharded_state_kv_batches: &ShardedStateKvSchemaBatch,
-        enable_sharding: bool,
     ) -> Result<LedgerState> {
         let current = self.current_state_locked().ledger_state();
         let persisted = self.persisted_state_locked().state().clone();
@@ -703,7 +702,6 @@ impl StateStore {
             &reads,
             ledger_batch,
             sharded_state_kv_batches,
-            enable_sharding,
         )?;
 
         Ok(new_state)
@@ -716,7 +714,6 @@ impl StateStore {
         state_reads: &ShardedStateCache,
         ledger_batch: &SchemaBatch,
         sharded_state_kv_batches: &ShardedStateKvSchemaBatch,
-        enable_sharding: bool,
     ) -> Result<()> {
         let _timer = OTHER_TIMERS_SECONDS.timer_with(&["put_value_sets"]);
         let current_state = self.current_state_locked().state().clone();
@@ -728,17 +725,15 @@ impl StateStore {
             state_reads,
             ledger_batch,
             sharded_state_kv_batches,
-            enable_sharding,
         )?;
 
-        self.put_state_values(state_update_refs, sharded_state_kv_batches, enable_sharding)
+        self.put_state_values(state_update_refs, sharded_state_kv_batches)
     }
 
     pub fn put_state_values(
         &self,
         state_update_refs: &PerVersionStateUpdateRefs,
         sharded_state_kv_batches: &ShardedStateKvSchemaBatch,
-        enable_sharding: bool,
     ) -> Result<()> {
         let _timer = OTHER_TIMERS_SECONDS.timer_with(&["add_state_kv_batch"]);
 
@@ -748,7 +743,7 @@ impl StateStore {
             .zip_eq(state_update_refs.shards.par_iter())
             .try_for_each(|(batch, updates)| {
                 updates.iter().try_for_each(|(key, update)| {
-                    if enable_sharding {
+                    if self.state_kv_db.enabled_sharding() {
                         batch.put::<StateValueByKeyHashSchema>(
                             &(CryptoHash::hash(*key), update.version),
                             &update.value.cloned(),
@@ -788,7 +783,6 @@ impl StateStore {
         state_reads: &ShardedStateCache,
         batch: &SchemaBatch,
         sharded_state_kv_batches: &ShardedStateKvSchemaBatch,
-        enable_sharding: bool,
     ) -> Result<()> {
         let _timer = OTHER_TIMERS_SECONDS.timer_with(&["put_stats_and_indices"]);
 
@@ -796,7 +790,7 @@ impl StateStore {
             current_state.next_version(),
             state_update_refs,
             sharded_state_kv_batches,
-            enable_sharding,
+            self.state_kv_db.enabled_sharding(),
             state_reads,
             latest_state.usage().is_untracked() || current_state.version().is_none(), // ignore_state_cache_miss
         );
@@ -1281,8 +1275,7 @@ mod test_only {
                 .calculate_state_and_put_updates(
                     &state_update_refs,
                     &ledger_batch,
-                    &new_sharded_kv_schema_batch(),
-                    true,
+                    &sharded_state_kv_batches,
                 )
                 .unwrap();
 

@@ -56,10 +56,6 @@ impl LedgerStateWithSummary {
         )
     }
 
-    pub fn set(&mut self, current_state: LedgerStateWithSummary) {
-        *self = current_state;
-    }
-
     pub fn last_checkpoint(&self) -> &StateWithSummary {
         &self.last_checkpoint
     }

@@ -51,8 +51,8 @@ impl StateDelta {
         self.current.next_version()
     }
 
-    pub fn parent_version(&self) -> Option<Version> {
-        self.base.next_version().checked_sub(1)
+    pub fn base_version(&self) -> Option<Version> {
+        self.base.version()
     }
 
     /// Get the state update for a given state key.

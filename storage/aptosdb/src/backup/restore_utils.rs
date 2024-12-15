@@ -257,7 +257,6 @@ pub(crate) fn save_transactions_impl(
             &StateUpdateRefs::index_write_sets(first_version, write_sets, write_sets.len(), None),
             &ledger_db_batch.ledger_metadata_db_batches, // used for storing the storage usage
             state_kv_batches,
-            state_store.state_kv_db.enabled_sharding(),
         )?;
     }
 

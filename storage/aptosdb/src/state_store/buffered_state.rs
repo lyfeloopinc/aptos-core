@@ -59,11 +59,8 @@ impl BufferedState {
         let (state_commit_sender, state_commit_receiver) =
             mpsc::sync_channel(ASYNC_COMMIT_CHANNEL_BUFFER_SIZE as usize);
         let arc_state_db = Arc::clone(state_db);
-        out_current_state
-            .lock()
-            .set(LedgerStateWithSummary::new_at_checkpoint(
-                last_snapshot.clone(),
-            ));
+        *out_current_state.lock() =
+            LedgerStateWithSummary::new_at_checkpoint(last_snapshot.clone());
         out_persisted_state.lock().set(last_snapshot.clone());
         let persisted_state_clone = out_persisted_state.clone();
         let last_snapshot_clone = last_snapshot.clone();
@@ -161,7 +158,7 @@ impl BufferedState {
             .count_updates_costly();
         let version = new_state.last_checkpoint().version();
 
-        self.current_state.lock().set(new_state);
+        *self.current_state_locked() = new_state;
         self.maybe_commit(sync_commit);
         Self::report_last_checkpoint_version(version);
         Ok(())

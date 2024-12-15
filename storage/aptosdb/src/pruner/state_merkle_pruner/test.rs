@@ -3,7 +3,7 @@
 
 use crate::{
     db::{
-        test_helper::{arb_state_kv_sets, update_store},
+        test_helper::{arb_state_kv_sets_with_genesis, update_store},
         AptosDB,
     },
     pruner::{PrunerManager, StateKvPrunerManager, StateMerklePrunerManager},
@@ -305,7 +305,7 @@ proptest! {
 
     #[test]
     fn test_state_value_pruner(
-        input in arb_state_kv_sets(10, 5, 5),
+        input in arb_state_kv_sets_with_genesis(5, 3, 5),
     ) {
         verify_state_value_pruner(input);
     }

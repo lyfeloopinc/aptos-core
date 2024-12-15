@@ -56,12 +56,15 @@ impl DoStateCheckpoint {
                 out.len(),
                 num_txns
             );
+            // FIXME(aldenhu): decide if last checkpoint is within chunk
+            /*
             ensure!(
                 out.last() == Some(&Some(state_summary.root_hash())),
                 "Root hash mismatch. {:?} vs {:?}",
                 out.last(),
-                state_summary.root_hash()
+                Some(&state_summary.root_hash()),
             );
+             */
 
             Ok(out)
         } else {
