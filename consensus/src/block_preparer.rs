@@ -47,6 +47,7 @@ impl BlockPreparer {
         let start_time = Instant::now();
         let (txns, max_txns_from_block_to_execute) =
             self.payload_manager.get_transactions(block).await?;
+        info!("prepare_block block_id {:?} txns: {:?}", block.id(), txns.len());
         for txn in &txns {
             info!("prepare_block block_id {:?} (address: {:?}, replay_protector: {:?}, expiration_timestamp_secs: {:?})", block.id(), txn.sender(), txn.replay_protector(), txn.expiration_timestamp_secs());
         }
