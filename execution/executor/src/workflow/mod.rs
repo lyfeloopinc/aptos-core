@@ -29,7 +29,7 @@ impl ApplyExecutionOutput {
             &execution_output,
             &base_view.state_summary,
             &ProvableStateSummary::new_persisted(reader)?,
-            Option::<Vec<_>>::None, // known_state_checkpoint_hashes
+            None,
         )?;
         let ledger_update_output = DoLedgerUpdate::run(
             &execution_output,

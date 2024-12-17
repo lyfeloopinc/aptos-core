@@ -3,7 +3,7 @@
 
 use crate::{
     metrics::TIMER,
-    state_store::{state::State, state_update::StateUpdate, NUM_STATE_SHARDS},
+    state_store::{state::State, versioned_state_value::StateUpdate, NUM_STATE_SHARDS},
 };
 use aptos_experimental_layered_map::LayeredMap;
 use aptos_metrics_core::TimerHelper;

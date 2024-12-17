@@ -56,9 +56,9 @@ use aptos_storage_interface::{
     state_store::{
         state::{LedgerState, State},
         state_summary::{ProvableStateSummary, StateSummary, StateWithSummary},
-        state_update::{StateCacheEntry, StateUpdateRef},
         state_update_refs::{PerVersionStateUpdateRefs, StateUpdateRefs},
         state_view::cached_state_view::{ShardedStateCache, StateCacheShard},
+        versioned_state_value::{StateCacheEntry, StateUpdateRef},
         NUM_STATE_SHARDS,
     },
     AptosDbError, DbReader, Result, StateSnapshotReceiver,
@@ -460,11 +460,10 @@ impl StateStore {
 
     #[cfg(feature = "db-debugger")]
     pub fn catch_up_state_merkle_db(
-        _ledger_db: Arc<LedgerDb>,
-        _state_merkle_db: Arc<StateMerkleDb>,
-        _state_kv_db: Arc<StateKvDb>,
+        ledger_db: Arc<LedgerDb>,
+        state_merkle_db: Arc<StateMerkleDb>,
+        state_kv_db: Arc<StateKvDb>,
     ) -> Result<Option<Version>> {
-        /*
         use aptos_config::config::NO_OP_STORAGE_PRUNER_CONFIG;
 
         let state_merkle_pruner = StateMerklePrunerManager::new(
@@ -488,7 +487,7 @@ impl StateStore {
             state_kv_pruner,
             skip_usage: false,
         });
-        let current_state = Arc::new(Mutex::new(CurrentState::new_dummy()));
+        let current_state = Arc::new(Mutex::new(LedgerStateWithSummary::new_dummy()));
         let persisted_state = Arc::new(Mutex::new(PersistedState::new_dummy()));
         let _ = Self::create_buffered_state_from_latest_snapshot(
             &state_db,
@@ -498,11 +497,8 @@ impl StateStore {
             current_state.clone(),
             persisted_state,
         )?;
-        let base_version = current_state.lock().base_version;
+        let base_version = current_state.lock().version();
         Ok(base_version)
-        FIXME(aldenhu)
-         */
-        todo!()
     }
 
     fn create_buffered_state_from_latest_snapshot(

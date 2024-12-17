@@ -3,7 +3,7 @@
 
 use crate::{
     metrics::TIMER,
-    state_store::{state_update::StateUpdateRef, NUM_STATE_SHARDS},
+    state_store::{versioned_state_value::StateUpdateRef, NUM_STATE_SHARDS},
 };
 use aptos_metrics_core::TimerHelper;
 use aptos_types::{

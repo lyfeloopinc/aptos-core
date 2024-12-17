@@ -42,7 +42,6 @@ impl<'kv> StateUpdateRef<'kv> {
     }
 }
 
-// FIXME(aldenhu): move?
 #[derive(Clone, Debug)]
 pub enum StateCacheEntry {
     /// Not indicating if the value ever existed and deleted.

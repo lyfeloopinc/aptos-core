@@ -4,7 +4,7 @@
 
 use super::*;
 use crate::{
-    db::test_helper::{update_store},
+    db::test_helper::{arb_state_kv_sets_with_genesis, update_store},
     schema::jellyfish_merkle_node::JellyfishMerkleNodeSchema,
     state_restore::StateSnapshotRestore,
     AptosDB,
@@ -24,7 +24,6 @@ use aptos_types::{
 };
 use proptest::{collection::hash_map, prelude::*};
 use std::collections::{BTreeMap, HashMap};
-use crate::db::test_helper::arb_state_kv_sets_with_genesis;
 
 fn put_value_set(
     state_store: &StateStore,

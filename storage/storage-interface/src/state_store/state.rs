@@ -5,9 +5,9 @@ use crate::{
     metrics::TIMER,
     state_store::{
         state_delta::StateDelta,
-        state_update::{StateUpdate, StateUpdateRef},
         state_update_refs::{BatchedStateUpdateRefs, StateUpdateRefs},
         state_view::cached_state_view::{CachedStateView, ShardedStateCache, StateCacheShard},
+        versioned_state_value::{StateUpdate, StateUpdateRef},
         NUM_STATE_SHARDS,
     },
     DbReader,

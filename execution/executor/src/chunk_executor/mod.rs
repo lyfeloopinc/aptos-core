@@ -49,7 +49,7 @@ use aptos_vm::VMBlockExecutor;
 use chunk_commit_queue::{ChunkCommitQueue, ChunkToUpdateLedger};
 use chunk_result_verifier::{ChunkResultVerifier, ReplayChunkVerifier, StateSyncChunkVerifier};
 use fail::fail_point;
-use itertools::multizip;
+use itertools::{multizip, Itertools};
 use std::{
     iter::once,
     marker::PhantomData,
@@ -345,7 +345,8 @@ impl<V: VMBlockExecutor> ChunkExecutorInner<V> {
                 chunk_verifier
                     .transaction_infos()
                     .iter()
-                    .map(|t| t.state_checkpoint_hash()),
+                    .map(|t| t.state_checkpoint_hash())
+                    .collect_vec(),
             ),
         )?;
 

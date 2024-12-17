@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::metrics::TIMER;
+use anyhow::{ensure, Result};
 use aptos_metrics_core::TimerHelper;
 use aptos_storage_interface::state_store::state_update_refs::{
     PerVersionStateUpdateRefs, StateUpdateRefs,
@@ -120,6 +121,13 @@ impl TransactionsToKeep {
         self.borrow_state_update_refs()
     }
 
+    pub fn last_inner_state_checkpoint_index(&self) -> Option<usize> {
+        self.state_update_refs()
+            .for_last_checkpoint
+            .as_ref()
+            .map(|updates| updates.num_versions - 1)
+    }
+
     pub fn per_version_state_update_refs(&self) -> &PerVersionStateUpdateRefs {
         &self.borrow_state_update_refs().per_version
     }
@@ -150,6 +158,29 @@ impl TransactionsToKeep {
         transactions
             .iter()
             .rposition(Transaction::is_non_reconfig_block_ending)
+    }
+
+    pub fn ensure_at_most_one_checkpoint(&self) -> Result<()> {
+        let _timer = TIMER.timer_with(&["unexpected__ensure_at_most_one_checkpoint"]);
+
+        let mut total = self
+            .transactions
+            .iter()
+            .filter(|t| t.is_non_reconfig_block_ending())
+            .count();
+        if self.is_reconfig() {
+            total += self
+                .transactions
+                .last()
+                .map_or(0, |t| !t.is_non_reconfig_block_ending() as usize);
+        }
+
+        ensure!(
+            total <= 1,
+            "Expecting at most one checkpoint, found {}",
+            total,
+        );
+        Ok(())
     }
 }
 

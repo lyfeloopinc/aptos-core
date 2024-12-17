@@ -6,9 +6,9 @@ use crate::{
     state_store::{
         state::State,
         state_delta::StateDelta,
-        state_update::StateCacheEntry,
         state_update_refs::{BatchedStateUpdateRefs, StateUpdateRefs},
         state_view::db_state_view::DbStateView,
+        versioned_state_value::StateCacheEntry,
     },
     DbReader,
 };

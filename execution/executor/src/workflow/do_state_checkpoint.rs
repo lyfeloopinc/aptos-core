@@ -11,7 +11,6 @@ use aptos_metrics_core::TimerHelper;
 use aptos_storage_interface::state_store::state_summary::{
     LedgerStateSummary, ProvableStateSummary,
 };
-use itertools::Itertools;
 
 pub struct DoStateCheckpoint;
 
@@ -20,7 +19,7 @@ impl DoStateCheckpoint {
         execution_output: &ExecutionOutput,
         parent_state_summary: &LedgerStateSummary,
         persisted_state_summary: &ProvableStateSummary,
-        known_state_checkpoints: Option<impl IntoIterator<Item = Option<HashValue>>>,
+        known_state_checkpoints: Option<Vec<Option<HashValue>>>,
     ) -> Result<StateCheckpointOutput> {
         let _timer = OTHER_TIMERS.timer_with(&["do_state_checkpoint"]);
 
@@ -43,45 +42,42 @@ impl DoStateCheckpoint {
 
     fn get_state_checkpoint_hashes(
         execution_output: &ExecutionOutput,
-        known_state_checkpoints: Option<impl IntoIterator<Item = Option<HashValue>>>,
+        known_state_checkpoints: Option<Vec<Option<HashValue>>>,
         state_summary: &LedgerStateSummary,
     ) -> Result<Vec<Option<HashValue>>> {
+        let _timer = OTHER_TIMERS.timer_with(&["get_state_checkpoint_hashes"]);
+
         let num_txns = execution_output.to_commit.len();
+        let last_checkpoint_index = execution_output
+            .to_commit
+            .last_inner_state_checkpoint_index();
 
         if let Some(known) = known_state_checkpoints {
-            let out = known.into_iter().collect_vec();
             ensure!(
-                out.len() == num_txns,
+                known.len() == num_txns,
                 "Bad number of known hashes. {} vs {}",
-                out.len(),
+                known.len(),
                 num_txns
             );
-            // FIXME(aldenhu): decide if last checkpoint is within chunk
-            /*
-            ensure!(
-                out.last() == Some(&Some(state_summary.root_hash())),
-                "Root hash mismatch. {:?} vs {:?}",
-                out.last(),
-                Some(&state_summary.root_hash()),
-            );
-             */
+            if let Some(idx) = last_checkpoint_index {
+                ensure!(
+                    known[idx] == Some(state_summary.last_checkpoint().root_hash()),
+                    "Root hash mismatch with known hashes passed in. {:?} vs {:?}",
+                    known[idx],
+                    Some(&state_summary.last_checkpoint().root_hash()),
+                );
+            }
 
-            Ok(out)
+            Ok(known)
         } else {
-            /* FIXME(aldenhu): relex for tests
-            // We don't bother to deal with the case where the known hashes are not passed in while
-            // there are potentially multiple state checkpoints in the output.
-            ensure!(execution_output.is_block || num_txns == 1);
-             */
+            if !execution_output.is_block {
+                // We should enter this branch only in test.
+                execution_output.to_commit.ensure_at_most_one_checkpoint()?;
+            }
 
             let mut out = vec![None; num_txns];
 
-            if let Some(updates) = &execution_output
-                .to_commit
-                .state_update_refs()
-                .for_last_checkpoint
-            {
-                let index = updates.num_versions - 1;
+            if let Some(index) = last_checkpoint_index {
                 out[index] = Some(state_summary.last_checkpoint().root_hash());
             }
 
