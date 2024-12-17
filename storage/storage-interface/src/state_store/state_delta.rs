@@ -9,6 +9,7 @@ use aptos_experimental_layered_map::LayeredMap;
 use aptos_metrics_core::TimerHelper;
 use aptos_types::{state_store::state_key::StateKey, transaction::Version};
 use itertools::Itertools;
+use rayon::prelude::*;
 use std::sync::Arc;
 
 /// This represents two state sparse merkle trees at their versions in memory with the updates
@@ -62,8 +63,11 @@ impl StateDelta {
     }
 
     pub fn count_updates_costly(&self) -> usize {
-        let _timer = TIMER.timer_with(&["state_delta__count_items_heavy"]);
+        let _timer = TIMER.timer_with(&["state_delta__count_updates_costly"]);
 
-        self.shards.iter().map(|shard| shard.iter().count()).sum()
+        self.shards
+            .par_iter()
+            .map(|shard| shard.iter().count())
+            .sum()
     }
 }

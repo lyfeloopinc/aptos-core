@@ -10,7 +10,10 @@ use crate::{
     DbReader,
 };
 use anyhow::Result;
-use aptos_crypto::{hash::CryptoHash, HashValue};
+use aptos_crypto::{
+    hash::{CryptoHash, CORRUPTION_SENTINEL},
+    HashValue,
+};
 use aptos_metrics_core::TimerHelper;
 use aptos_scratchpad::{ProofRead, SparseMerkleTree};
 use aptos_types::{
@@ -73,6 +76,8 @@ impl StateSummary {
         updates: &BatchedStateUpdateRefs,
     ) -> Result<Self> {
         let _timer = TIMER.timer_with(&["state_summary__update"]);
+
+        assert_ne!(self.global_state_summary.root_hash(), *CORRUPTION_SENTINEL);
 
         // Persisted must be before or at my version.
         assert!(persisted.next_version() <= self.next_version());

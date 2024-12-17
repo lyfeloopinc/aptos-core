@@ -81,6 +81,7 @@ impl State {
     }
 
     pub fn make_delta(&self, base: &State) -> StateDelta {
+        let _timer = TIMER.timer_with(&["state__make_delta"]);
         self.clone().into_delta(base.clone())
     }
 
