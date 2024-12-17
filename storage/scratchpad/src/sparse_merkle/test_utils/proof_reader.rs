@@ -20,7 +20,7 @@ impl ProofRead for ProofReader {
     fn get_proof(&self, key: HashValue, root_depth: usize) -> Option<&SparseMerkleProofExt> {
         let ret = self.0.get(&key);
         if let Some(proof) = ret {
-            assert!(proof.root_depth() >= root_depth);
+            assert!(proof.root_depth() <= root_depth);
         }
         ret
     }

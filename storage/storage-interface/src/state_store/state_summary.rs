@@ -216,7 +216,7 @@ impl<'db> ProofRead for ProvableStateSummary<'db> {
                         .expect("Failed to get account state with proof by version."),
                 )
             });
-            assert!(proof.root_depth() >= root_depth);
+            assert!(proof.root_depth() <= root_depth);
             proof
         })
     }
