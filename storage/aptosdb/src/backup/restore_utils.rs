@@ -253,11 +253,12 @@ pub(crate) fn save_transactions_impl(
     }
 
     if kv_replay && first_version > 0 && state_store.get_usage(Some(first_version - 1)).is_ok() {
-        let _ledger_state = state_store.calculate_state_and_put_updates(
+        let ledger_state = state_store.calculate_state_and_put_updates(
             &StateUpdateRefs::index_write_sets(first_version, write_sets, write_sets.len(), None),
             &ledger_db_batch.ledger_metadata_db_batches, // used for storing the storage usage
             state_kv_batches,
         )?;
+        state_store.set_state_ignoring_summary(ledger_state);
     }
 
     let last_version = first_version + txns.len() as u64 - 1;

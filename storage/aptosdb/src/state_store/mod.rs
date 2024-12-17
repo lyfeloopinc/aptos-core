@@ -36,7 +36,7 @@ use crate::{
     },
 };
 use aptos_crypto::{
-    hash::{CryptoHash, SPARSE_MERKLE_PLACEHOLDER_HASH},
+    hash::{CryptoHash, CORRUPTION_SENTINEL, SPARSE_MERKLE_PLACEHOLDER_HASH},
     HashValue,
 };
 use aptos_db_indexer::db_indexer::InternalIndexerDB;
@@ -49,6 +49,7 @@ use aptos_jellyfish_merkle::iterator::JellyfishMerkleIterator;
 use aptos_logger::info;
 use aptos_metrics_core::TimerHelper;
 use aptos_schemadb::SchemaBatch;
+use aptos_scratchpad::SparseMerkleTree;
 use aptos_storage_interface::{
     db_ensure as ensure, db_other_bail as bail,
     state_store::{
@@ -1091,6 +1092,32 @@ impl StateStore {
             }
         }
         Ok(keys)
+    }
+
+    pub fn init_state_ignoring_summary(&self, version: Option<Version>) -> Result<()> {
+        let usage = self.get_usage(version)?;
+        let state = State::new_at_version(version, usage);
+        let ledger_state = LedgerState::new(state.clone(), state);
+        self.set_state_ignoring_summary(ledger_state);
+
+        Ok(())
+    }
+
+    pub fn set_state_ignoring_summary(&self, ledger_state: LedgerState) {
+        let smt = SparseMerkleTree::new(*CORRUPTION_SENTINEL);
+        let last_checkpoint_summary =
+            StateSummary::new_at_version(ledger_state.last_checkpoint().version(), smt.clone());
+        let summary = StateSummary::new_at_version(ledger_state.version(), smt.clone());
+
+        let last_checkpoint = StateWithSummary::new(
+            ledger_state.last_checkpoint().clone(),
+            last_checkpoint_summary.clone(),
+        );
+        let latest = StateWithSummary::new(ledger_state.latest().clone(), summary);
+        let current = LedgerStateWithSummary::new(latest, last_checkpoint.clone());
+
+        self.persisted_state_locked().set(last_checkpoint);
+        *self.current_state_locked() = current;
     }
 }
 
