@@ -5,7 +5,7 @@
 
 use anyhow::Result;
 use aptos_crypto::HashValue;
-use aptos_scratchpad::{ProofRead, SparseMerkleTree};
+use aptos_scratchpad::SparseMerkleTree;
 use aptos_types::{
     account_config::{NEW_EPOCH_EVENT_MOVE_TYPE_TAG, NEW_EPOCH_EVENT_V2_MOVE_TYPE_TAG},
     block_executor::{config::BlockExecutorConfigFromOnchain, partitioner::ExecutableBlock},
@@ -13,7 +13,6 @@ use aptos_types::{
     dkg::DKG_START_EVENT_MOVE_TYPE_TAG,
     jwks::OBSERVED_JWK_UPDATED_MOVE_TYPE_TAG,
     ledger_info::LedgerInfoWithSignatures,
-    proof::SparseMerkleProofExt,
     state_store::{state_key::StateKey, state_value::StateValue},
     transaction::{
         Transaction, TransactionInfo, TransactionListWithProof, TransactionOutputListWithProof,
@@ -25,7 +24,7 @@ pub use error::{ExecutorError, ExecutorResult};
 pub use ledger_update_output::LedgerUpdateOutput;
 use state_compute_result::StateComputeResult;
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::BTreeSet,
     ops::Deref,
     sync::{
         atomic::{AtomicBool, Ordering},
@@ -264,28 +263,6 @@ pub struct ChunkCommitNotification {
     pub subscribable_events: Vec<ContractEvent>,
     pub committed_transactions: Vec<Transaction>,
     pub reconfiguration_occurred: bool,
-}
-
-pub struct ProofReader<'a> {
-    proofs: Option<&'a HashMap<HashValue, SparseMerkleProofExt>>,
-}
-
-impl<'a> ProofReader<'a> {
-    pub fn new(proofs: &'a HashMap<HashValue, SparseMerkleProofExt>) -> Self {
-        Self {
-            proofs: Some(proofs),
-        }
-    }
-
-    pub fn new_empty() -> Self {
-        Self { proofs: None }
-    }
-}
-
-impl<'a> ProofRead for ProofReader<'a> {
-    fn get_proof(&self, key: HashValue) -> Option<&SparseMerkleProofExt> {
-        self.proofs.and_then(|proofs| proofs.get(&key))
-    }
 }
 
 /// Used in both state sync and consensus to filter the txn events that should be subscribable by node components.

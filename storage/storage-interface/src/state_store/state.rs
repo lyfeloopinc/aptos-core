@@ -128,7 +128,7 @@ impl State {
             .into_par_iter()
             .map(|(cache, overlay, updates)| {
                 (
-                    // FIXME(aldenhu): change interface to take iter of ref
+                    // TODO(aldenhu): change interface to take iter of ref
                     overlay.new_layer(
                         &updates
                             .iter()

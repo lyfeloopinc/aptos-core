@@ -150,8 +150,7 @@ impl<'a, V: Clone + CryptoHash + Send + Sync + 'static> SubTreeInfo<'a, V> {
         proof_reader: &'a impl ProofRead,
     ) -> Result<Self> {
         let proof = proof_reader
-            // FIXME(aldenhu): get partial proof, save some CPU
-            .get_proof(a_descendant_key)
+            .get_proof(a_descendant_key, depth)
             .ok_or(UpdateError::MissingProof)?;
         if depth > proof.bottom_depth() {
             return Err(UpdateError::ShortProof {

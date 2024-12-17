@@ -559,11 +559,11 @@ where
 /// A type that implements `ProofRead` can provide proof for keys in persistent storage.
 pub trait ProofRead: Sync {
     /// Gets verified proof for this key in persistent storage.
-    fn get_proof(&self, key: HashValue) -> Option<&SparseMerkleProofExt>;
+    fn get_proof(&self, key: HashValue, root_depth: usize) -> Option<&SparseMerkleProofExt>;
 }
 
 impl ProofRead for () {
-    fn get_proof(&self, _key: HashValue) -> Option<&SparseMerkleProofExt> {
+    fn get_proof(&self, _key: HashValue, _root_depth: usize) -> Option<&SparseMerkleProofExt> {
         unimplemented!()
     }
 }

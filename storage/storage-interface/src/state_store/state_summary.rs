@@ -202,22 +202,22 @@ impl<'db> ProvableStateSummary<'db> {
 }
 
 impl<'db> ProofRead for ProvableStateSummary<'db> {
-    // FIXME(aldenhu): return error
-    // FIXME(aldenhu): partial proof
-    // FIXME(aldenhu): ref
+    // TODO(aldenhu): return error
     // TODO(aldenhu): make proof reader creation lazy -- localize the memorized map to sub trees to reduce cost
-    fn get_proof(&self, key: HashValue) -> Option<&SparseMerkleProofExt> {
+    fn get_proof(&self, key: HashValue, root_depth: usize) -> Option<&SparseMerkleProofExt> {
         self.version().map(|ver| {
             let _timer = TIMER.timer_with(&["provable_state_summary__get_or_insert"]);
-            self.memorized.insert(key, |key| {
+            let proof = self.memorized.insert(key, |key| {
                 let _timer = TIMER.timer_with(&["provable_state_summary__get_proof"]);
 
                 Box::new(
                     self.db
-                        .get_state_proof_by_version_ext(key, ver, 0)
+                        .get_state_proof_by_version_ext(key, ver, root_depth)
                         .expect("Failed to get account state with proof by version."),
                 )
-            })
+            });
+            assert!(proof.root_depth() >= root_depth);
+            proof
         })
     }
 }
