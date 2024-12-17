@@ -713,7 +713,6 @@ where
             .map(|(value, proof_ext)| (value, proof_ext.into()))
     }
 
-    // FIXME(aldenhu): interface to get proof only
     pub fn get_with_proof_ext(
         &self,
         key: &HashValue,

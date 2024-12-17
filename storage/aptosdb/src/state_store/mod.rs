@@ -4,11 +4,9 @@
 
 //! This file defines state store APIs that are related account state Merkle tree.
 
-// FIXME(aldenhu): log STATE_ITEMS, TOTAL_STATE_BYTES
-
 use crate::{
     ledger_db::LedgerDb,
-    metrics::OTHER_TIMERS_SECONDS,
+    metrics::{OTHER_TIMERS_SECONDS, STATE_ITEMS, TOTAL_STATE_BYTES},
     pruner::{StateKvPrunerManager, StateMerklePrunerManager},
     schema::{
         db_metadata::{DbMetadataKey, DbMetadataSchema, DbMetadataValue},
@@ -800,6 +798,8 @@ impl StateStore {
                 Self::put_usage(latest_state.last_checkpoint(), batch)?;
             }
             Self::put_usage(latest_state, batch)?;
+            STATE_ITEMS.set(latest_state.usage().items() as i64);
+            TOTAL_STATE_BYTES.set(latest_state.usage().bytes() as i64);
         }
 
         Ok(())

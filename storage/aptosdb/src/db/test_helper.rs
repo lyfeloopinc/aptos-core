@@ -19,9 +19,7 @@ use aptos_types::{
     ledger_info::{generate_ledger_info_with_sig, LedgerInfo, LedgerInfoWithSignatures},
     proof::accumulator::{InMemoryEventAccumulator, InMemoryTransactionAccumulator},
     proptest_types::{AccountInfoUniverse, BlockGen},
-    state_store::{
-        state_key::StateKey, state_storage_usage::StateStorageUsage, state_value::StateValue,
-    },
+    state_store::{state_key::StateKey, state_value::StateValue},
     transaction::{
         Transaction, TransactionAuxiliaryData, TransactionInfo, TransactionToCommit, Version,
     },
@@ -123,7 +121,7 @@ pub fn update_in_memory_state(
         .map(|(k, u)| (k.hash(), u))
         .collect();
     smt.freeze(root_smt)
-        .batch_update(updates, StateStorageUsage::new_untracked(), &())
+        .batch_update(updates, &())
         .unwrap()
         .unfreeze()
 }
@@ -145,7 +143,7 @@ prop_compose! {
         block_gens in vec(any_with::<BlockGen>(max_user_txns_per_block), min_blocks..=max_blocks),
     ) -> Vec<(Vec<TransactionToCommit>, LedgerInfoWithSignatures)> {
         let mut txn_accumulator = InMemoryTransactionAccumulator::new_empty();
-        let root_smt = SparseMerkleTree::new(*SPARSE_MERKLE_PLACEHOLDER_HASH, StateStorageUsage::new_untracked());
+        let root_smt = SparseMerkleTree::new(*SPARSE_MERKLE_PLACEHOLDER_HASH);
         let mut smt = root_smt.clone();
 
         let mut result = Vec::new();

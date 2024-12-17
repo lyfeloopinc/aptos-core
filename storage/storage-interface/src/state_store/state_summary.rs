@@ -98,12 +98,7 @@ impl StateSummary {
         let smt = self
             .global_state_summary
             .freeze(&persisted.global_state_summary)
-            .batch_update(
-                smt_updates,
-                // TODO(aldenhu): smt not carry usage
-                StateStorageUsage::Untracked,
-                persisted,
-            )?
+            .batch_update(smt_updates, persisted)?
             .unfreeze();
 
         Ok(Self {
@@ -251,7 +246,7 @@ impl StateWithSummary {
             state: State::new_at_version(version, usage),
             summary: StateSummary::new_at_version(
                 version,
-                SparseMerkleTree::new(global_state_root_hash, usage),
+                SparseMerkleTree::new(global_state_root_hash),
             ),
         }
     }
