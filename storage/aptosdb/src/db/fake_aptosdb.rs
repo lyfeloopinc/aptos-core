@@ -826,12 +826,12 @@ impl DbReader for FakeAptosDB {
 
     fn get_state_value_with_proof_by_version_ext(
         &self,
-        state_key: &StateKey,
+        key_hash: &HashValue,
         version: Version,
         root_depth: usize,
     ) -> Result<(Option<StateValue>, SparseMerkleProofExt)> {
         self.inner
-            .get_state_value_with_proof_by_version_ext(state_key, version, root_depth)
+            .get_state_value_with_proof_by_version_ext(key_hash, version, root_depth)
     }
 
     fn get_pre_committed_ledger_summary(&self) -> Result<LedgerSummary> {

@@ -513,7 +513,7 @@ impl DbReader for AptosDB {
 
     fn get_state_value_with_proof_by_version_ext(
         &self,
-        state_store_key: &StateKey,
+        key_hash: &HashValue,
         version: Version,
         root_depth: usize,
     ) -> Result<(Option<StateValue>, SparseMerkleProofExt)> {
@@ -521,7 +521,7 @@ impl DbReader for AptosDB {
             self.error_if_state_merkle_pruned("State merkle", version)?;
 
             self.state_store.get_state_value_with_proof_by_version_ext(
-                state_store_key,
+                key_hash,
                 version,
                 root_depth,
             )

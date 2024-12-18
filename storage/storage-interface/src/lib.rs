@@ -371,7 +371,7 @@ pub trait DbReader: Send + Sync {
         /// This is used by aptos core (executor) internally.
         fn get_state_value_with_proof_by_version_ext(
             &self,
-            state_key: &StateKey,
+            key_hash: &HashValue,
             version: Version,
             root_depth: usize,
         ) -> Result<(Option<StateValue>, SparseMerkleProofExt)>;
@@ -488,7 +488,7 @@ pub trait DbReader: Send + Sync {
         state_key: &StateKey,
         version: Version,
     ) -> Result<(Option<StateValue>, SparseMerkleProof)> {
-        self.get_state_value_with_proof_by_version_ext(state_key, version, 0)
+        self.get_state_value_with_proof_by_version_ext(state_key.crypto_hash_ref(), version, 0)
             .map(|(value, proof_ext)| (value, proof_ext.into()))
     }
 

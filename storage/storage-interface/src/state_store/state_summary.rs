@@ -187,7 +187,7 @@ pub struct ProvableStateSummary<'db> {
     #[deref]
     state_summary: StateSummary,
     db: &'db (dyn DbReader + Sync),
-    memorized: OnceMap<HashValue, Box<SparseMerkleProofExt>>,
+    memorized_proofs: OnceMap<HashValue, Box<SparseMerkleProofExt>>,
 }
 
 impl<'db> ProvableStateSummary<'db> {
@@ -199,7 +199,32 @@ impl<'db> ProvableStateSummary<'db> {
         Self {
             state_summary,
             db,
-            memorized: OnceMap::new(),
+            memorized_proofs: OnceMap::new(),
+        }
+    }
+
+    fn get_proof(
+        &self,
+        key: &HashValue,
+        version: Version,
+        root_depth: usize,
+    ) -> Result<SparseMerkleProofExt> {
+        if rand::random::<usize>() % 10000 == 0 {
+            // 1 out of 10000 times, verify the proof.
+            let (val_opt, proof) = self
+                .db
+                // check the full proof
+                .get_state_value_with_proof_by_version_ext(key, version, 0)?;
+            proof.verify(
+                self.state_summary.global_state_summary.root_hash(),
+                *key,
+                val_opt.as_ref(),
+            )?;
+            Ok(proof)
+        } else {
+            Ok(self
+                .db
+                .get_state_proof_by_version_ext(key, version, root_depth)?)
         }
     }
 }
@@ -210,12 +235,11 @@ impl<'db> ProofRead for ProvableStateSummary<'db> {
     fn get_proof(&self, key: HashValue, root_depth: usize) -> Option<&SparseMerkleProofExt> {
         self.version().map(|ver| {
             let _timer = TIMER.timer_with(&["provable_state_summary__get_or_insert"]);
-            let proof = self.memorized.insert(key, |key| {
+            let proof = self.memorized_proofs.insert(key, |key| {
                 let _timer = TIMER.timer_with(&["provable_state_summary__get_proof"]);
 
                 Box::new(
-                    self.db
-                        .get_state_proof_by_version_ext(key, ver, root_depth)
+                    self.get_proof(key, ver, root_depth)
                         .expect("Failed to get account state with proof by version."),
                 )
             });

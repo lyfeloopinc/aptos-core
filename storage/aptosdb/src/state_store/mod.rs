@@ -186,18 +186,25 @@ impl DbReader for StateDb {
     /// Get the state value with proof given the state key and version
     fn get_state_value_with_proof_by_version_ext(
         &self,
-        state_key: &StateKey,
+        key_hash: &HashValue,
         version: Version,
         root_depth: usize,
     ) -> Result<(Option<StateValue>, SparseMerkleProofExt)> {
-        let (leaf_data, proof) = self.state_merkle_db.get_with_proof_ext(
-            state_key.crypto_hash_ref(),
-            version,
-            root_depth,
-        )?;
+        let (leaf_data, proof) = self
+            .state_merkle_db
+            .get_with_proof_ext(key_hash, version, root_depth)?;
         Ok((
             match leaf_data {
-                Some((_, (key, version))) => Some(self.expect_value_by_version(&key, version)?),
+                Some((_, (key, version))) => {
+                    ensure!(
+                        key.crypto_hash_ref() == key_hash,
+                        "Data corruption: key on leaf {:?} has wrong hash {:?}, expected {:?}",
+                        key,
+                        key.crypto_hash_ref(),
+                        key_hash,
+                    );
+                    Some(self.expect_value_by_version(&key, version)?)
+                },
                 None => None,
             },
             proof,
@@ -270,12 +277,12 @@ impl DbReader for StateStore {
     /// Get the state value with proof extension given the state key and version
     fn get_state_value_with_proof_by_version_ext(
         &self,
-        state_key: &StateKey,
+        key_hash: &HashValue,
         version: Version,
         root_depth: usize,
     ) -> Result<(Option<StateValue>, SparseMerkleProofExt)> {
         self.deref()
-            .get_state_value_with_proof_by_version_ext(state_key, version, root_depth)
+            .get_state_value_with_proof_by_version_ext(key_hash, version, root_depth)
     }
 }
 
