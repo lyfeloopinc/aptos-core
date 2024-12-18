@@ -114,8 +114,8 @@ mod tests {
         chain_id::ChainId,
         transaction::{EntryFunction, RawTransaction, ReplayProtector, Script, SignedTransaction, TransactionExecutable, TransactionPayload},
     };
-    use move_core_types::{account_address::AccountAddress, ident_str, language_storage::ModuleId, move_resource::MoveResource};
-    use aptos_types::coin::AptosCoinType;
+    use move_core_types::{account_address::AccountAddress, ident_str, language_storage::ModuleId};
+    use aptos_types::utility_coin::AptosCoinType;
     use std::time::Instant;
 
     struct Account {
@@ -184,8 +184,7 @@ mod tests {
             vec![bcs::to_bytes(&receiver).unwrap(), bcs::to_bytes(&1).unwrap()],
         );
         let executable = TransactionExecutable::EntryFunction(entry_func);
-        let payload = aptos_stdlib::aptos_coin_transfer(receiver, 1);
-        raw_txn(payload, sender, ReplayProtector::SequenceNumber(seq_num), gas_unit_price)
+        raw_txn(executable, sender, ReplayProtector::SequenceNumber(seq_num), gas_unit_price)
     }
 
     fn block(refs: Vec<&SignedTransaction>) -> Vec<SignedTransaction> {
