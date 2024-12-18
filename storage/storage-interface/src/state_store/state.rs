@@ -34,7 +34,7 @@ pub struct State {
     ///  N.b. this is not directly iteratable, one needs to make a `StateDelta`
     ///       between this and a `base_version` to list the updates or create a
     ///       new `State` at a descendant version.
-    pub shards: Arc<[MapLayer<StateKey, StateUpdate>; NUM_STATE_SHARDS]>,
+    shards: Arc<[MapLayer<StateKey, StateUpdate>; NUM_STATE_SHARDS]>,
     /// The total usage of the state at the current version.
     usage: StateStorageUsage,
 }
@@ -275,7 +275,7 @@ impl LedgerState {
             updates,
             state_view.memorized_reads(),
         );
-        let state_reads = state_view.into_state_cache();
+        let state_reads = state_view.into_memorized_reads();
         Ok((updated, state_reads))
     }
 

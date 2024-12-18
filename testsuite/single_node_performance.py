@@ -33,6 +33,7 @@ class Flow(Flag):
     RESOURCE_GROUPS = auto()
     # Test different executor types
     EXECUTORS = auto()
+    # For when testing locally, quick inclusion of specific cases
     ADHOC = auto()
 
 

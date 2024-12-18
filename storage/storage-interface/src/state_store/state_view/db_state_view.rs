@@ -26,6 +26,7 @@ impl DbStateView {
     fn get(&self, key: &StateKey) -> StateViewResult<Option<StateValue>> {
         if let Some(version) = self.version {
             if let Some(root_hash) = self.maybe_verify_against_state_root_hash {
+                // TODO(aldenhu): sample-verify proof inside DB
                 // DB doesn't support returning proofs for buffered state, so only optionally
                 // verify proof.
                 // TODO: support returning state proof for buffered state.

@@ -3,9 +3,10 @@
 
 use crate::state_store::{
     state::LedgerState,
-    state_summary::{LedgerStateSummary, StateWithSummary},
+    state_summary::LedgerStateSummary,
     state_update_refs::PerVersionStateUpdateRefs,
     state_view::cached_state_view::ShardedStateCache,
+    state_with_summary::{LedgerStateWithSummary, StateWithSummary},
 };
 use aptos_types::transaction::{Transaction, TransactionInfo, TransactionOutput, Version};
 
@@ -39,17 +40,15 @@ impl<'a> ChunkToCommit<'a> {
         self.next_version() - 1
     }
 
-    pub fn state(&self) -> StateWithSummary {
-        StateWithSummary::new(
+    pub fn result_ledger_state_with_summary(&self) -> LedgerStateWithSummary {
+        let latest = StateWithSummary::new(
             self.state.latest().clone(),
             self.state_summary.latest().clone(),
-        )
-    }
-
-    pub fn last_checkpoint_state(&self) -> StateWithSummary {
-        StateWithSummary::new(
+        );
+        let last_checkpoint = StateWithSummary::new(
             self.state.last_checkpoint().clone(),
             self.state_summary.last_checkpoint().clone(),
-        )
+        );
+        LedgerStateWithSummary::from_latest_and_last_checkpoint(latest, last_checkpoint)
     }
 }

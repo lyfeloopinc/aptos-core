@@ -543,7 +543,7 @@ impl DbReader for AptosDB {
 
     fn get_pre_committed_ledger_summary(&self) -> Result<LedgerSummary> {
         gauged_api("get_pre_committed_ledger_summary", || {
-            let (state, state_summary) = self.state_store.current_state_locked().transpose();
+            let (state, state_summary) = self.state_store.current_state_locked().to_state_and_summary();
             let num_txns = state.next_version();
 
             let frozen_subtrees = self

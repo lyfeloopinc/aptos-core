@@ -3,7 +3,6 @@
 
 use itertools::Itertools;
 use aptos_storage_interface::chunk_to_commit::ChunkToCommit;
-use crate::state_store::current_state::LedgerStateWithSummary;
 
 impl DbWriter for AptosDB {
     fn pre_commit_ledger(
@@ -33,10 +32,7 @@ impl DbWriter for AptosDB {
             let _timer = OTHER_TIMERS_SECONDS.timer_with(&["save_transactions__others"]);
 
             self.state_store.buffered_state().lock().update(
-                LedgerStateWithSummary::new(
-                    chunk.state(),
-                    chunk.last_checkpoint_state(),
-                ),
+                chunk.result_ledger_state_with_summary(),
                 sync_commit || chunk.is_reconfig,
             )?;
 

@@ -13,7 +13,7 @@ use crate::{
         db_metadata::{DbMetadataKey, DbMetadataSchema, DbMetadataValue},
         transaction_accumulator::TransactionAccumulatorSchema,
     },
-    state_store::{current_state::LedgerStateWithSummary, StateStore},
+    state_store::StateStore,
     utils::{new_sharded_kv_schema_batch, ShardedStateKvSchemaBatch},
 };
 use aptos_crypto::HashValue;
@@ -162,9 +162,6 @@ pub(crate) fn save_transactions(
             .commit(last_version, None, sharded_kv_schema_batch)?;
 
         ledger_db.write_schemas(ledger_db_batch)?;
-
-        *state_store.current_state_locked() =
-            LedgerStateWithSummary::new_dummy_at_checkpoint_version(Some(last_version));
     }
 
     Ok(())
@@ -258,6 +255,7 @@ pub(crate) fn save_transactions_impl(
             &ledger_db_batch.ledger_metadata_db_batches, // used for storing the storage usage
             state_kv_batches,
         )?;
+        // n.b. ideally this is set after the batches are committed
         state_store.set_state_ignoring_summary(ledger_state);
     }
 

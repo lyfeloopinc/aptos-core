@@ -871,11 +871,7 @@ proptest! {
             txns.push(SignatureVerifiedTransaction::Valid(Transaction::StateCheckpoint(block_b.id)));
             txns
         }, TEST_BLOCK_EXECUTOR_ONCHAIN_CONFIG);
-        if root_hash != expected_root_hash {
-            println!("failure");
-        } else {
-            println!("success");
-        }
+
         prop_assert_eq!(root_hash, expected_root_hash);
     }
 }

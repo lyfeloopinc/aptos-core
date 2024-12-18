@@ -6,13 +6,15 @@
 use crate::{
     metrics::{LATEST_CHECKPOINT_VERSION, OTHER_TIMERS_SECONDS},
     state_store::{
-        persisted_state::PersistedState, state_snapshot_committer::StateSnapshotCommitter,
-        LedgerStateWithSummary, StateDb,
+        persisted_state::PersistedState, state_snapshot_committer::StateSnapshotCommitter, StateDb,
     },
 };
 use aptos_infallible::Mutex;
 use aptos_metrics_core::TimerHelper;
-use aptos_storage_interface::{state_store::state_summary::StateWithSummary, Result};
+use aptos_storage_interface::{
+    state_store::state_with_summary::{LedgerStateWithSummary, StateWithSummary},
+    Result,
+};
 use aptos_types::transaction::Version;
 use std::{
     sync::{
@@ -22,6 +24,7 @@ use std::{
     },
     thread::JoinHandle,
 };
+
 pub(crate) const ASYNC_COMMIT_CHANNEL_BUFFER_SIZE: u64 = 1;
 pub(crate) const TARGET_SNAPSHOT_INTERVAL_IN_VERSION: u64 = 100_000;
 
@@ -152,6 +155,7 @@ impl BufferedState {
         let old_state = self.current_state_locked().clone();
         assert!(new_state.is_descendant_of(&old_state));
 
+        // TODO(aldenhu): move off critical path
         self.estimated_items += new_state
             .last_checkpoint()
             .make_delta(old_state.last_checkpoint())

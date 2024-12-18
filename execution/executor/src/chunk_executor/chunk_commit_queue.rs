@@ -105,6 +105,8 @@ impl ChunkCommitQueue {
     }
 
     pub(crate) fn save_ledger_update_output(&mut self, chunk: ExecutedChunk) -> Result<()> {
+        let _timer = CHUNK_OTHER_TIMERS.timer_with(&["save_ledger_update_output"]);
+
         ensure!(
             !self.to_update_ledger.is_empty(),
             "to_update_ledger is empty."

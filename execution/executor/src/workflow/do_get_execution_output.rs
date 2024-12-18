@@ -348,7 +348,7 @@ impl Parser {
             to_commit.state_update_refs(),
             base_state_view.memorized_reads(),
         );
-        let state_cache = base_state_view.into_state_cache();
+        let state_reads = base_state_view.into_memorized_reads();
 
         let out = ExecutionOutput::new(
             is_block,
@@ -358,7 +358,7 @@ impl Parser {
             to_discard,
             to_retry,
             result_state,
-            state_cache,
+            state_reads,
             block_end_info,
             next_epoch_state,
             Planned::place_holder(),

@@ -21,10 +21,7 @@ use crate::{
     state_kv_db::StateKvDb,
     state_merkle_db::StateMerkleDb,
     state_restore::{StateSnapshotRestore, StateSnapshotRestoreMode, StateValueWriter},
-    state_store::{
-        buffered_state::BufferedState, current_state::LedgerStateWithSummary,
-        persisted_state::PersistedState,
-    },
+    state_store::{buffered_state::BufferedState, persisted_state::PersistedState},
     utils::{
         iterators::PrefixedStateValueIterator,
         new_sharded_kv_schema_batch,
@@ -54,9 +51,10 @@ use aptos_storage_interface::{
     db_ensure as ensure, db_other_bail as bail,
     state_store::{
         state::{LedgerState, State},
-        state_summary::{ProvableStateSummary, StateSummary, StateWithSummary},
+        state_summary::{ProvableStateSummary, StateSummary},
         state_update_refs::{PerVersionStateUpdateRefs, StateUpdateRefs},
         state_view::cached_state_view::{ShardedStateCache, StateCacheShard},
+        state_with_summary::{LedgerStateWithSummary, StateWithSummary},
         versioned_state_value::{StateCacheEntry, StateUpdateRef},
         NUM_STATE_SHARDS,
     },
@@ -86,7 +84,6 @@ pub(crate) mod buffered_state;
 mod state_merkle_batch_committer;
 mod state_snapshot_committer;
 
-pub(crate) mod current_state;
 mod persisted_state;
 #[cfg(test)]
 mod state_store_test;
@@ -1114,7 +1111,10 @@ impl StateStore {
             last_checkpoint_summary.clone(),
         );
         let latest = StateWithSummary::new(ledger_state.latest().clone(), summary);
-        let current = LedgerStateWithSummary::new(latest, last_checkpoint.clone());
+        let current = LedgerStateWithSummary::from_latest_and_last_checkpoint(
+            latest,
+            last_checkpoint.clone(),
+        );
 
         self.persisted_state_locked().set(last_checkpoint);
         *self.current_state_locked() = current;
@@ -1247,14 +1247,12 @@ impl StateValueWriter<StateKey, StateValue> for StateStore {
 
 #[cfg(test)]
 mod test_only {
-    use crate::{
-        state_store::{current_state::LedgerStateWithSummary, StateStore},
-        utils::new_sharded_kv_schema_batch,
-    };
+    use crate::{state_store::StateStore, utils::new_sharded_kv_schema_batch};
     use aptos_crypto::HashValue;
     use aptos_schemadb::SchemaBatch;
     use aptos_storage_interface::state_store::{
         state_summary::ProvableStateSummary, state_update_refs::StateUpdateRefs,
+        state_with_summary::LedgerStateWithSummary,
     };
     use aptos_types::{
         state_store::{state_key::StateKey, state_value::StateValue},

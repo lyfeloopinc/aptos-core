@@ -4,7 +4,7 @@
 use crate::{
     metrics::TIMER,
     state_store::{
-        state::{LedgerState, State},
+        state::LedgerState,
         state_update_refs::{BatchedStateUpdateRefs, StateUpdateRefs},
     },
     DbReader,
@@ -17,9 +17,7 @@ use aptos_crypto::{
 use aptos_metrics_core::TimerHelper;
 use aptos_scratchpad::{ProofRead, SparseMerkleTree};
 use aptos_types::{
-    proof::SparseMerkleProofExt,
-    state_store::{state_storage_usage::StateStorageUsage, state_value::StateValue},
-    transaction::Version,
+    proof::SparseMerkleProofExt, state_store::state_value::StateValue, transaction::Version,
 };
 use derive_more::Deref;
 use itertools::Itertools;
@@ -224,52 +222,5 @@ impl<'db> ProofRead for ProvableStateSummary<'db> {
             assert!(proof.root_depth() <= root_depth);
             proof
         })
-    }
-}
-
-#[derive(Clone, Debug, Deref)]
-pub struct StateWithSummary {
-    #[deref]
-    state: State,
-    summary: StateSummary,
-}
-
-impl StateWithSummary {
-    pub fn new_empty() -> Self {
-        Self {
-            state: State::new_empty(),
-            summary: StateSummary::new_empty(),
-        }
-    }
-
-    pub fn new_at_version(
-        version: Option<Version>,
-        global_state_root_hash: HashValue,
-        usage: StateStorageUsage,
-    ) -> Self {
-        Self {
-            state: State::new_at_version(version, usage),
-            summary: StateSummary::new_at_version(
-                version,
-                SparseMerkleTree::new(global_state_root_hash),
-            ),
-        }
-    }
-
-    pub fn new(state: State, summary: StateSummary) -> Self {
-        assert_eq!(state.next_version(), summary.next_version());
-        Self { state, summary }
-    }
-
-    pub fn state(&self) -> &State {
-        &self.state
-    }
-
-    pub fn summary(&self) -> &StateSummary {
-        &self.summary
-    }
-
-    pub fn is_descendant_of(&self, other: &Self) -> bool {
-        self.state.is_descendant_of(&other.state) && self.summary.is_descendant_of(&other.summary)
     }
 }

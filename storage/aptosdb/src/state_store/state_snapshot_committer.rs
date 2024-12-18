@@ -19,7 +19,7 @@ use aptos_infallible::Mutex;
 use aptos_logger::trace;
 use aptos_metrics_core::TimerHelper;
 use aptos_storage_interface::{
-    jmt_update_refs, state_store::state_summary::StateWithSummary, Result,
+    jmt_update_refs, state_store::state_with_summary::StateWithSummary, Result,
 };
 use itertools::Itertools;
 use rayon::prelude::*;

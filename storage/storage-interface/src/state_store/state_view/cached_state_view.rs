@@ -49,9 +49,9 @@ pub struct ShardedStateCache {
 }
 
 impl ShardedStateCache {
-    pub fn new_empty(next_version: Version) -> Self {
+    pub fn new_empty(version: Option<Version>) -> Self {
         Self {
-            next_version,
+            next_version: version.map_or(0, |v| v + 1),
             shards: Default::default(),
         }
     }
@@ -113,7 +113,7 @@ impl CachedStateView {
         Self {
             id,
             reader,
-            memorized: ShardedStateCache::new_empty(state.next_version()),
+            memorized: ShardedStateCache::new_empty(state.version()),
             speculative: state.into_delta(persisted_state),
         }
     }
@@ -125,7 +125,7 @@ impl CachedStateView {
         Self {
             id: StateViewId::Miscellaneous,
             reader: Arc::new(DummyDbReader),
-            memorized: ShardedStateCache::new_empty(0),
+            memorized: ShardedStateCache::new_empty(None),
             speculative: state.make_delta(state),
         }
     }
@@ -166,7 +166,7 @@ impl CachedStateView {
     }
 
     /// Consumes `Self` and returns the state and all the memorized state reads.
-    pub fn into_state_cache(self) -> ShardedStateCache {
+    pub fn into_memorized_reads(self) -> ShardedStateCache {
         let Self {
             id: _,
             reader: _,

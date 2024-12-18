@@ -32,9 +32,9 @@ impl StateDelta {
 
         let shards = Arc::new(
             current
-                .shards
+                .shards()
                 .iter()
-                .zip_eq(base.shards.iter())
+                .zip_eq(base.shards().iter())
                 .map(|(current, base)| current.view_layers_after(base))
                 .collect_vec()
                 .try_into()
