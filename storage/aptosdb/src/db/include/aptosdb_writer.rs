@@ -33,6 +33,7 @@ impl DbWriter for AptosDB {
 
             self.state_store.buffered_state().lock().update(
                 chunk.result_ledger_state_with_summary(),
+                chunk.estimated_total_state_updates(),
                 sync_commit || chunk.is_reconfig,
             )?;
 
@@ -297,7 +298,7 @@ impl AptosDB {
 
         self.state_store.put_state_updates(
             chunk.state,
-            chunk.state_update_refs,
+            &chunk.state_update_refs.per_version,
             chunk.state_reads,
             &ledger_metadata_batch,
             &sharded_state_kv_batches,

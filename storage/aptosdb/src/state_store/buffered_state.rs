@@ -95,13 +95,15 @@ impl BufferedState {
     /// This method checks whether a commit is needed based on the target_items value and the number of items in state_until_checkpoint.
     /// If a commit is needed, it sends a CommitMessage::Data message to the StateSnapshotCommitter thread to commit the data.
     /// If sync_commit is true, it also sends a CommitMessage::Sync message to ensure that the commit is completed before returning.
-    fn maybe_commit(&mut self, sync_commit: bool) {
-        if sync_commit && self.estimated_items > 0
-            || self.estimated_items >= self.target_items
-            || self.buffered_versions() >= TARGET_SNAPSHOT_INTERVAL_IN_VERSION
+    fn maybe_commit(&mut self, checkpoint: StateWithSummary, sync_commit: bool) {
+        if !self.last_snapshot.is_the_same(&checkpoint)
+            && (sync_commit
+                || self.estimated_items >= self.target_items
+                || self.buffered_versions() >= TARGET_SNAPSHOT_INTERVAL_IN_VERSION)
         {
-            self.enqueue_commit();
+            self.enqueue_commit(checkpoint);
         }
+
         if sync_commit {
             self.drain_commits();
         }
@@ -115,19 +117,14 @@ impl BufferedState {
         self.current_state_locked().next_version() - self.last_snapshot.next_version()
     }
 
-    fn last_checkpoint(&self) -> StateWithSummary {
-        self.current_state_locked().last_checkpoint().clone()
-    }
-
-    fn enqueue_commit(&mut self) {
+    fn enqueue_commit(&mut self, checkpoint: StateWithSummary) {
         let _timer = OTHER_TIMERS_SECONDS.timer_with(&["buffered_state___enqueue_commit"]);
 
-        let last_checkpoint = self.last_checkpoint();
         self.state_commit_sender
-            .send(CommitMessage::Data(last_checkpoint.clone()))
+            .send(CommitMessage::Data(checkpoint.clone()))
             .unwrap();
         self.estimated_items = 0;
-        self.last_snapshot = last_checkpoint;
+        self.last_snapshot = checkpoint;
     }
 
     fn drain_commits(&mut self) {
@@ -141,7 +138,8 @@ impl BufferedState {
     }
 
     pub(crate) fn sync_commit(&mut self) {
-        self.maybe_commit(true /* sync_commit */);
+        let checkpoint = self.current_state_locked().last_checkpoint().clone();
+        self.maybe_commit(checkpoint, true /* sync_commit */);
     }
 
     fn report_last_checkpoint_version(version: Option<Version>) {
@@ -149,21 +147,23 @@ impl BufferedState {
     }
 
     /// This method updates the buffered state with new data.
-    pub fn update(&mut self, new_state: LedgerStateWithSummary, sync_commit: bool) -> Result<()> {
+    pub fn update(
+        &mut self,
+        new_state: LedgerStateWithSummary,
+        estimated_items: usize,
+        sync_commit: bool,
+    ) -> Result<()> {
         let _timer = OTHER_TIMERS_SECONDS.timer_with(&["buffered_state___update"]);
 
         let old_state = self.current_state_locked().clone();
         assert!(new_state.is_descendant_of(&old_state));
 
-        // TODO(aldenhu): move off critical path
-        self.estimated_items += new_state
-            .last_checkpoint()
-            .make_delta(old_state.last_checkpoint())
-            .count_updates_costly();
+        self.estimated_items += estimated_items;
         let version = new_state.last_checkpoint().version();
 
+        let checkpoint = new_state.last_checkpoint().clone();
         *self.current_state_locked() = new_state;
-        self.maybe_commit(sync_commit);
+        self.maybe_commit(checkpoint, sync_commit);
         Self::report_last_checkpoint_version(version);
         Ok(())
     }

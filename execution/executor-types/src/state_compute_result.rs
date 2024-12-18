@@ -163,11 +163,7 @@ impl StateComputeResult {
             transaction_infos: &self.ledger_update_output.transaction_infos,
             state: &self.execution_output.result_state,
             state_summary: &self.state_checkpoint_output.state_summary,
-            state_update_refs: &self
-                .execution_output
-                .to_commit
-                .state_update_refs()
-                .per_version,
+            state_update_refs: self.execution_output.to_commit.state_update_refs(),
             state_reads: &self.execution_output.state_reads,
             is_reconfig: self.execution_output.next_epoch_state.is_some(),
         }

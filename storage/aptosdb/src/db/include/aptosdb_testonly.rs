@@ -130,7 +130,7 @@ impl AptosDB {
             transaction_infos: &transaction_infos,
             state: &new_state,
             state_summary: &new_state_summary,
-            state_update_refs: &transactions_to_keep.state_update_refs().per_version,
+            state_update_refs: transactions_to_keep.state_update_refs(),
             state_reads: &reads,
             is_reconfig,
         };

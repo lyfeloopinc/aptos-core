@@ -4,7 +4,7 @@
 use crate::state_store::{
     state::LedgerState,
     state_summary::LedgerStateSummary,
-    state_update_refs::PerVersionStateUpdateRefs,
+    state_update_refs::StateUpdateRefs,
     state_view::cached_state_view::ShardedStateCache,
     state_with_summary::{LedgerStateWithSummary, StateWithSummary},
 };
@@ -18,7 +18,7 @@ pub struct ChunkToCommit<'a> {
     pub transaction_infos: &'a [TransactionInfo],
     pub state: &'a LedgerState,
     pub state_summary: &'a LedgerStateSummary,
-    pub state_update_refs: &'a PerVersionStateUpdateRefs<'a>,
+    pub state_update_refs: &'a StateUpdateRefs<'a>,
     pub state_reads: &'a ShardedStateCache,
     pub is_reconfig: bool,
 }
@@ -50,5 +50,20 @@ impl<'a> ChunkToCommit<'a> {
             self.state_summary.last_checkpoint().clone(),
         );
         LedgerStateWithSummary::from_latest_and_last_checkpoint(latest, last_checkpoint)
+    }
+
+    pub fn estimated_total_state_updates(&self) -> usize {
+        let for_last_checkpoint = self
+            .state_update_refs
+            .for_last_checkpoint
+            .as_ref()
+            .map_or(0, |x| x.len());
+        let for_latest = self
+            .state_update_refs
+            .for_latest
+            .as_ref()
+            .map_or(0, |x| x.len());
+
+        for_latest + for_last_checkpoint
     }
 }

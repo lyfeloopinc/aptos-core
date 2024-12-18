@@ -1,15 +1,10 @@
 // Copyright © Aptos Foundation
 // SPDX-License-Identifier: Apache-2.0
 
-use crate::{
-    metrics::TIMER,
-    state_store::{state::State, versioned_state_value::StateUpdate, NUM_STATE_SHARDS},
-};
+use crate::state_store::{state::State, versioned_state_value::StateUpdate, NUM_STATE_SHARDS};
 use aptos_experimental_layered_map::LayeredMap;
-use aptos_metrics_core::TimerHelper;
 use aptos_types::{state_store::state_key::StateKey, transaction::Version};
 use itertools::Itertools;
-use rayon::prelude::*;
 use std::sync::Arc;
 
 /// This represents two state sparse merkle trees at their versions in memory with the updates
@@ -60,14 +55,5 @@ impl StateDelta {
     /// `None` indicates the key is not updated in the delta.
     pub fn get_state_update(&self, state_key: &StateKey) -> Option<StateUpdate> {
         self.shards[state_key.get_shard_id() as usize].get(state_key)
-    }
-
-    pub fn count_updates_costly(&self) -> usize {
-        let _timer = TIMER.timer_with(&["state_delta__count_updates_costly"]);
-
-        self.shards
-            .par_iter()
-            .map(|shard| shard.iter().count())
-            .sum()
     }
 }

@@ -83,6 +83,14 @@ impl<'kv> BatchedStateUpdateRefs<'kv> {
     pub fn last_version(&self) -> Option<Version> {
         self.next_version().checked_sub(1)
     }
+
+    pub fn len(&self) -> usize {
+        self.shards.iter().map(|shard| shard.len()).sum()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 pub struct StateUpdateRefs<'kv> {
