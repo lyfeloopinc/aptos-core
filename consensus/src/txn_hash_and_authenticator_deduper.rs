@@ -115,7 +115,7 @@ mod tests {
         transaction::{EntryFunction, RawTransaction, ReplayProtector, Script, SignedTransaction, TransactionExecutable, TransactionPayload},
     };
     use move_core_types::{account_address::AccountAddress, ident_str, language_storage::ModuleId};
-    use aptos_types::utility_coin::AptosCoinType;
+    use aptos_types::AptosCoinType;
     use std::time::Instant;
 
     struct Account {
