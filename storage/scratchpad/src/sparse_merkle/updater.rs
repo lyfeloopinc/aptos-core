@@ -17,12 +17,22 @@ use aptos_crypto::{
 use aptos_drop_helper::ArcAsyncDrop;
 use aptos_experimental_runtimes::thread_manager::THREAD_MANAGER;
 use aptos_types::proof::{definition::NodeInProof, SparseMerkleLeafNode, SparseMerkleProofExt};
+use once_cell::sync::Lazy;
 use std::cmp::Ordering;
 
 type Result<T> = std::result::Result<T, UpdateError>;
 
 type InMemSubTree<V> = super::node::SubTree<V>;
 type InMemInternal<V> = InternalNode<V>;
+
+static POOL: Lazy<rayon::ThreadPool> = Lazy::new(|| {
+    rayon::ThreadPoolBuilder::new()
+        // High concurrency for proof reads.
+        .num_threads(256)
+        .thread_name(|index| format!("smt_update_{}", index))
+        .build()
+        .unwrap()
+});
 
 #[derive(Clone)]
 enum InMemSubTreeInfo<V: ArcAsyncDrop> {
@@ -312,12 +322,7 @@ impl<'a, V: ArcAsyncDrop + Clone + CryptoHash> SubTreeUpdater<'a, V> {
                     && left.updates.len() >= MIN_PARALLELIZABLE_SIZE
                     && right.updates.len() >= MIN_PARALLELIZABLE_SIZE
                 {
-                    THREAD_MANAGER
-                        // TODO(aldenhu):
-                        //     Maybe dedicated pool for reading proofs?
-                        //     Maybe configurable size.
-                        .get_high_pri_io_pool()
-                        .join(|| left.run(proof_reader), || right.run(proof_reader))
+                    POOL.join(|| left.run(proof_reader), || right.run(proof_reader))
                 } else {
                     (left.run(proof_reader), right.run(proof_reader))
                 };
