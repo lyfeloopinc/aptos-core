@@ -607,7 +607,7 @@ impl StateStore {
                 state_db.clone(),
             )?;
             let new_state_summary = current_state.ledger_state_summary().update(
-                &ProvableStateSummary::new(state.summary().clone(), state_db.as_ref()),
+                &ProvableStateSummary::new(state.summary().clone(), state_db.clone()),
                 &state_update_refs,
             )?;
             let updated =
@@ -1323,7 +1323,7 @@ mod test_only {
 
             let new_state_summary = current
                 .update(
-                    &ProvableStateSummary::new(persisted, self.state_db.as_ref()),
+                    &ProvableStateSummary::new(persisted, self.state_db.clone()),
                     &state_update_refs,
                 )
                 .unwrap();

@@ -23,6 +23,7 @@ use derive_more::Deref;
 use itertools::Itertools;
 use once_map::sync::OnceMap;
 use rayon::prelude::*;
+use std::sync::Arc;
 
 /// The data structure through which the entire state at a given
 /// version can be summarized to a concise digest (the root hash).
@@ -183,19 +184,19 @@ impl LedgerStateSummary {
 }
 
 #[derive(Deref)]
-pub struct ProvableStateSummary<'db> {
+pub struct ProvableStateSummary {
     #[deref]
     state_summary: StateSummary,
-    db: &'db (dyn DbReader + Sync),
+    db: Arc<dyn DbReader>,
     memorized_proofs: OnceMap<HashValue, Box<SparseMerkleProofExt>>,
 }
 
-impl<'db> ProvableStateSummary<'db> {
-    pub fn new_persisted(db: &'db (dyn DbReader + Sync)) -> Result<Self> {
+impl ProvableStateSummary {
+    pub fn new_persisted(db: Arc<dyn DbReader>) -> Result<Self> {
         Ok(Self::new(db.get_persisted_state_summary()?, db))
     }
 
-    pub fn new(state_summary: StateSummary, db: &'db (dyn DbReader + Sync)) -> Self {
+    pub fn new(state_summary: StateSummary, db: Arc<dyn DbReader>) -> Self {
         Self {
             state_summary,
             db,
@@ -229,7 +230,7 @@ impl<'db> ProvableStateSummary<'db> {
     }
 }
 
-impl<'db> ProofRead for ProvableStateSummary<'db> {
+impl ProofRead for ProvableStateSummary {
     // TODO(aldenhu): return error
     // TODO(aldenhu): make proof reader creation lazy -- localize the memorized map to sub trees to reduce cost
     fn get_proof(&self, key: HashValue, root_depth: usize) -> Option<&SparseMerkleProofExt> {

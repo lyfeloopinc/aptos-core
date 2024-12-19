@@ -12,6 +12,7 @@ use aptos_storage_interface::{
 };
 use do_ledger_update::DoLedgerUpdate;
 use do_state_checkpoint::DoStateCheckpoint;
+use std::sync::Arc;
 
 pub mod do_get_execution_output;
 pub mod do_ledger_update;
@@ -23,7 +24,7 @@ impl ApplyExecutionOutput {
     pub fn run(
         execution_output: ExecutionOutput,
         base_view: LedgerSummary,
-        reader: &(dyn DbReader + Sync),
+        reader: Arc<dyn DbReader>,
     ) -> Result<PartialStateComputeResult> {
         let state_checkpoint_output = DoStateCheckpoint::run(
             &execution_output,

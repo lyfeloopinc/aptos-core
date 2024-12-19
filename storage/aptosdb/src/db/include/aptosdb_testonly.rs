@@ -119,7 +119,7 @@ impl AptosDB {
             self.state_store.clone(),
         )?;
         let new_state_summary = current.ledger_state_summary().update(
-            &ProvableStateSummary::new(persisted.summary().clone(), self),
+            &ProvableStateSummary::new(persisted.summary().clone(), self.state_store.clone()),
             transactions_to_keep.state_update_refs(),
         )?;
 
