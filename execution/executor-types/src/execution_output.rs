@@ -4,13 +4,11 @@
 
 #![forbid(unsafe_code)]
 
-use crate::{
-    planned::Planned,
-    transactions_with_output::{TransactionsToKeep, TransactionsWithOutput},
-};
+use crate::transactions_with_output::{TransactionsToKeep, TransactionsWithOutput};
 use aptos_drop_helper::DropHelper;
-use aptos_storage_interface::state_store::{
-    state::LedgerState, state_view::cached_state_view::ShardedStateCache,
+use aptos_storage_interface::{
+    state_store::{state::LedgerState, state_view::cached_state_view::ShardedStateCache},
+    utils::planned::Planned,
 };
 use aptos_types::{
     contract_event::ContractEvent,

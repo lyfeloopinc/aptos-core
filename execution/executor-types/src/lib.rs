@@ -36,7 +36,6 @@ mod error;
 pub mod execution_output;
 mod ledger_update_output;
 mod metrics;
-pub mod planned;
 pub mod state_checkpoint_output;
 pub mod state_compute_result;
 pub mod transactions_with_output;

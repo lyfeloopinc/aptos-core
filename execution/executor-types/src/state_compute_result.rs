@@ -148,7 +148,7 @@ impl StateComputeResult {
             subscribable_events: self
                 .execution_output
                 .subscribable_events
-                .get(Some("wait_for_subscribable_events"))
+                .wait(Some("wait_for_subscribable_events"))
                 .clone(),
             committed_transactions: self.execution_output.to_commit.transactions.clone(),
             reconfiguration_occurred: self.execution_output.next_epoch_state.is_some(),

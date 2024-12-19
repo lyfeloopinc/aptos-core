@@ -16,15 +16,15 @@ use aptos_executor_service::{
 };
 use aptos_executor_types::{
     execution_output::ExecutionOutput,
-    planned::Planned,
     should_forward_to_subscription_service,
     transactions_with_output::{TransactionsToKeep, TransactionsWithOutput},
 };
 use aptos_experimental_runtimes::thread_manager::THREAD_MANAGER;
 use aptos_logger::prelude::*;
 use aptos_metrics_core::TimerHelper;
-use aptos_storage_interface::state_store::{
-    state::LedgerState, state_view::cached_state_view::CachedStateView,
+use aptos_storage_interface::{
+    state_store::{state::LedgerState, state_view::cached_state_view::CachedStateView},
+    utils::planned::Planned,
 };
 #[cfg(feature = "consensus-only-perf-test")]
 use aptos_types::transaction::ExecutionStatus;

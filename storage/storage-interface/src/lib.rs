@@ -42,6 +42,7 @@ mod metrics;
 #[cfg(any(test, feature = "fuzzing"))]
 pub mod mock;
 pub mod state_store;
+pub mod utils;
 
 use crate::{
     chunk_to_commit::ChunkToCommit,
