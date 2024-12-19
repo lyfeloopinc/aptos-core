@@ -214,7 +214,7 @@ pub(crate) async fn process_transaction_broadcast<NetworkClient, TransactionVali
     TransactionValidator: TransactionValidation,
 {
     for txn in &transactions {
-        info!("process_transaction_broadcast (address: {:?}, replay_protector: {:?}, expiration_timestamp_secs: {:?})", txn.0.sender(), txn.0.replay_protector(), txn.0.expiration_timestamp_secs());
+        info!("process_transaction_broadcast peer: {:?} (address: {:?}, replay_protector: {:?}, expiration_timestamp_secs: {:?})", peer, txn.0.sender(), txn.0.replay_protector(), txn.0.expiration_timestamp_secs());
     }
     timer.stop_and_record();
     let _timer = counters::process_txn_submit_latency_timer(peer.network_id());
