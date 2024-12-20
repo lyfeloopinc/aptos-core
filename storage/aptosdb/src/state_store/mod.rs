@@ -51,7 +51,7 @@ use aptos_storage_interface::{
     db_ensure as ensure, db_other_bail as bail,
     state_store::{
         state::{LedgerState, State},
-        state_summary::{ProvableStateSummary, StateSummary},
+        state_summary::{StateProofFetcher, StateSummary},
         state_update_refs::{PerVersionStateUpdateRefs, StateUpdateRefs},
         state_view::cached_state_view::{ShardedStateCache, StateCacheShard},
         state_with_summary::{LedgerStateWithSummary, StateWithSummary},
@@ -607,7 +607,7 @@ impl StateStore {
                 state_db.clone(),
             )?;
             let new_state_summary = current_state.ledger_state_summary().update(
-                &ProvableStateSummary::new(state.summary().clone(), state_db.clone()),
+                &StateProofFetcher::new(state.summary().clone(), state_db.clone()),
                 &state_update_refs,
             )?;
             let updated =
@@ -1261,7 +1261,7 @@ mod test_only {
     use aptos_crypto::HashValue;
     use aptos_schemadb::SchemaBatch;
     use aptos_storage_interface::state_store::{
-        state_summary::ProvableStateSummary, state_update_refs::StateUpdateRefs,
+        state_summary::StateProofFetcher, state_update_refs::StateUpdateRefs,
         state_with_summary::LedgerStateWithSummary,
     };
     use aptos_types::{
@@ -1323,7 +1323,7 @@ mod test_only {
 
             let new_state_summary = current
                 .update(
-                    &ProvableStateSummary::new(persisted, self.state_db.clone()),
+                    &StateProofFetcher::new(persisted, self.state_db.clone()),
                     &state_update_refs,
                 )
                 .unwrap();

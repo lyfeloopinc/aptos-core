@@ -28,7 +28,7 @@ use aptos_logger::prelude::*;
 use aptos_metrics_core::{IntGaugeHelper, TimerHelper};
 use aptos_storage_interface::{
     state_store::{
-        state_summary::ProvableStateSummary, state_view::cached_state_view::CachedStateView,
+        state_summary::StateProofFetcher, state_view::cached_state_view::CachedStateView,
     },
     DbReaderWriter,
 };
@@ -298,7 +298,7 @@ where
                 output.set_state_checkpoint_output(DoStateCheckpoint::run(
                     &output.execution_output,
                     parent_block.output.expect_result_state_summary(),
-                    &ProvableStateSummary::new_persisted(self.db.reader.clone())?,
+                    &StateProofFetcher::new_persisted(self.db.reader.clone())?,
                     None,
                 )?);
                 output.set_ledger_update_output(DoLedgerUpdate::run(

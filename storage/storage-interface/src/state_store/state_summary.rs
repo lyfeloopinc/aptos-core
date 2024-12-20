@@ -7,6 +7,7 @@ use crate::{
         state::LedgerState,
         state_update_refs::{BatchedStateUpdateRefs, StateUpdateRefs},
     },
+    utils::planned::{Plan, Planned},
     DbReader,
 };
 use anyhow::Result;
@@ -19,9 +20,11 @@ use aptos_scratchpad::{ProofRead, SparseMerkleTree};
 use aptos_types::{
     proof::SparseMerkleProofExt, state_store::state_value::StateValue, transaction::Version,
 };
+use aptos_vm::AptosVM;
 use derive_more::Deref;
 use itertools::Itertools;
-use once_map::sync::OnceMap;
+use once_cell::sync::Lazy;
+use once_map::OnceMap;
 use rayon::prelude::*;
 use std::sync::Arc;
 
@@ -71,7 +74,7 @@ impl StateSummary {
 
     pub fn update(
         &self,
-        persisted: &ProvableStateSummary,
+        persisted: &StateProofFetcher,
         updates: &BatchedStateUpdateRefs,
     ) -> Result<Self> {
         let _timer = TIMER.timer_with(&["state_summary__update"]);
@@ -157,7 +160,7 @@ impl LedgerStateSummary {
 
     pub fn update(
         &self,
-        persisted: &ProvableStateSummary,
+        persisted: &StateProofFetcher,
         updates: &StateUpdateRefs,
     ) -> Result<Self> {
         let _timer = TIMER.timer_with(&["ledger_state_summary__update"]);
@@ -183,15 +186,27 @@ impl LedgerStateSummary {
     }
 }
 
+pub static IO_POOL: Lazy<Arc<rayon::ThreadPool>> = Lazy::new(|| {
+    Arc::new(
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(AptosVM::get_num_proof_reading_threads()) // More than 8 threads doesn't seem to help much
+            .thread_name(|index| format!("proof-read-{}", index))
+            .build()
+            .unwrap(),
+    )
+});
+
 #[derive(Deref)]
-pub struct ProvableStateSummary {
+pub struct StateProofFetcher {
     #[deref]
     state_summary: StateSummary,
     db: Arc<dyn DbReader>,
-    memorized_proofs: OnceMap<HashValue, Box<SparseMerkleProofExt>>,
+    // with OnceMap one can get a reference to the proof without locking the whole map up and
+    // prevent updating.
+    memorized_proofs: OnceMap<HashValue, Box<Planned<SparseMerkleProofExt>>>,
 }
 
-impl ProvableStateSummary {
+impl StateProofFetcher {
     pub fn new_persisted(db: Arc<dyn DbReader>) -> Result<Self> {
         Ok(Self::new(db.get_persisted_state_summary()?, db))
     }
@@ -204,48 +219,52 @@ impl ProvableStateSummary {
         }
     }
 
-    fn get_proof(
-        &self,
-        key: &HashValue,
+    fn root_hash(&self) -> HashValue {
+        self.state_summary.root_hash()
+    }
+
+    pub fn get_proof_impl(
+        db: Arc<dyn DbReader>,
+        key_hash: HashValue,
         version: Version,
         root_depth: usize,
+        root_hash: HashValue,
     ) -> Result<SparseMerkleProofExt> {
         if rand::random::<usize>() % 10000 == 0 {
             // 1 out of 10000 times, verify the proof.
-            let (val_opt, proof) = self
-                .db
-                // check the full proof
-                .get_state_value_with_proof_by_version_ext(key, version, 0)?;
-            proof.verify(
-                self.state_summary.global_state_summary.root_hash(),
-                *key,
-                val_opt.as_ref(),
-            )?;
+            let (val_opt, proof) = db
+                // verify the full proof
+                .get_state_value_with_proof_by_version_ext(&key_hash, version, 0)?;
+            proof.verify(root_hash, key_hash, val_opt.as_ref())?;
             Ok(proof)
         } else {
-            Ok(self
-                .db
-                .get_state_proof_by_version_ext(key, version, root_depth)?)
+            Ok(db.get_state_proof_by_version_ext(&key_hash, version, root_depth)?)
         }
+    }
+
+    pub fn schedule_get_proof_once(
+        &self,
+        key_hash: HashValue,
+        root_depth: usize,
+    ) -> Option<&Planned<SparseMerkleProofExt>> {
+        self.version().map(|ver| {
+            self.memorized_proofs.insert(key_hash, |key_hash| {
+                let key_hash = *key_hash;
+                let db = self.db.clone();
+                let root_hash = self.root_hash();
+
+                Box::new(IO_POOL.plan(move || {
+                    Self::get_proof_impl(db, key_hash, ver, root_depth, root_hash)
+                        .expect("Failed getting state proof.")
+                }))
+            })
+        })
     }
 }
 
-impl ProofRead for ProvableStateSummary {
-    // TODO(aldenhu): return error
-    // TODO(aldenhu): make proof reader creation lazy -- localize the memorized map to sub trees to reduce cost
+impl ProofRead for StateProofFetcher {
     fn get_proof(&self, key: HashValue, root_depth: usize) -> Option<&SparseMerkleProofExt> {
-        self.version().map(|ver| {
-            let _timer = TIMER.timer_with(&["provable_state_summary__get_or_insert"]);
-            let proof = self.memorized_proofs.insert(key, |key| {
-                let _timer = TIMER.timer_with(&["provable_state_summary__get_proof"]);
-
-                Box::new(
-                    self.get_proof(key, ver, root_depth)
-                        .expect("Failed to get account state with proof by version."),
-                )
-            });
-            assert!(proof.root_depth() <= root_depth);
-            proof
-        })
+        self.schedule_get_proof_once(key, root_depth)
+            .map(|planned| planned.wait(Some("state_proof_wait")))
     }
 }

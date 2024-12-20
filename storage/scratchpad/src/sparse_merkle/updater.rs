@@ -15,7 +15,6 @@ use aptos_crypto::{
     HashValue,
 };
 use aptos_drop_helper::ArcAsyncDrop;
-use aptos_experimental_runtimes::thread_manager::THREAD_MANAGER;
 use aptos_types::proof::{definition::NodeInProof, SparseMerkleLeafNode, SparseMerkleProofExt};
 use once_cell::sync::Lazy;
 use std::cmp::Ordering;

@@ -25,7 +25,7 @@ use aptos_logger::prelude::*;
 use aptos_metrics_core::{IntGaugeHelper, TimerHelper};
 use aptos_storage_interface::{
     state_store::{
-        state::State, state_summary::ProvableStateSummary,
+        state::State, state_summary::StateProofFetcher,
         state_view::cached_state_view::CachedStateView,
     },
     DbReaderWriter,
@@ -340,7 +340,7 @@ impl<V: VMBlockExecutor> ChunkExecutorInner<V> {
         let state_checkpoint_output = DoStateCheckpoint::run(
             &output.execution_output,
             &parent_state_summary,
-            &ProvableStateSummary::new_persisted(self.db.reader.clone())?,
+            &StateProofFetcher::new_persisted(self.db.reader.clone())?,
             Some(
                 chunk_verifier
                     .transaction_infos()

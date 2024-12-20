@@ -1602,7 +1602,6 @@ dependencies = [
  "anyhow",
  "aptos-crypto",
  "aptos-drop-helper",
- "aptos-infallible",
  "aptos-metrics-core",
  "aptos-scratchpad",
  "aptos-secure-net",
@@ -1614,7 +1613,6 @@ dependencies = [
  "itertools 0.13.0",
  "once_cell",
  "ouroboros",
- "rayon",
  "serde",
  "thiserror",
 ]
@@ -3957,6 +3955,7 @@ dependencies = [
  "aptos-scratchpad",
  "aptos-secure-net",
  "aptos-types",
+ "aptos-vm",
  "arr_macro",
  "bcs 0.1.4",
  "dashmap",
