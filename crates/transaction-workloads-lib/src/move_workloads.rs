@@ -3,13 +3,11 @@
 #![allow(unused)]
 
 pub use super::raw_module_data::PreBuiltPackagesImpl;
-use super::{
+use aptos_transaction_generator_lib::{
     entry_point_trait::{
         get_payload, AutomaticArgs, EntryPointTrait, MultiSigConfig, PreBuiltPackages,
     },
-    raw_module_data,
 };
-use crate::publishing::publish_util::Package;
 use aptos_framework::natives::code::{MoveOption, PackageMetadata};
 use aptos_sdk::{
     bcs,
@@ -22,6 +20,7 @@ use aptos_sdk::{
         transaction::{EntryFunction, Script, TransactionPayload},
     },
 };
+use aptos_transaction_generator_lib::publishing::publish_util::Package;
 use move_binary_format::{
     file_format::{FunctionHandleIndex, IdentifierIndex, SignatureToken},
     CompiledModule,

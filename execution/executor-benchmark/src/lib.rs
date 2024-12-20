@@ -923,7 +923,8 @@ mod tests {
     use aptos_executor_types::BlockExecutorTrait;
     use aptos_sdk::{transaction_builder::aptos_stdlib, types::LocalAccount};
     use aptos_temppath::TempPath;
-    use aptos_transaction_generator_lib::{args::TransactionTypeArg, WorkflowProgress};
+    use aptos_transaction_generator_lib::WorkflowProgress;
+    use aptos_transaction_workloads_lib::args::TransactionTypeArg;
     use aptos_types::{
         access_path::Path,
         account_address::AccountAddress,

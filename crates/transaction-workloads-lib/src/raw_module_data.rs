@@ -12,9 +12,9 @@
 // This crate should also provide a Rust file that allows proper manipulation of each
 // module defined below.
 
-use crate::entry_point_trait::PreBuiltPackages;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
+use aptos_transaction_generator_lib::entry_point_trait::PreBuiltPackages;
 
 #[rustfmt::skip]
 pub static PACKAGE_SIMPLE_METADATA: Lazy<Vec<u8>> = Lazy::new(|| {
@@ -2199,6 +2199,7 @@ pub static PACKAGE_TO_SCRIPT: Lazy<HashMap<String, Vec<u8>>> = Lazy::new(|| { Ha
 	("simple".to_string(), SCRIPT_SIMPLE.to_vec()),
 ])});
 
+#[derive(Debug)]
 pub struct PreBuiltPackagesImpl;
 
 impl PreBuiltPackages for PreBuiltPackagesImpl {
