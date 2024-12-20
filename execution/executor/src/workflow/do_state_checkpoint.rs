@@ -8,9 +8,7 @@ use aptos_executor_types::{
     execution_output::ExecutionOutput, state_checkpoint_output::StateCheckpointOutput,
 };
 use aptos_metrics_core::TimerHelper;
-use aptos_storage_interface::state_store::{
-    state_proof_fetcher::StateProofFetcher, state_summary::LedgerStateSummary,
-};
+use aptos_storage_interface::state_store::state_summary::LedgerStateSummary;
 
 pub struct DoStateCheckpoint;
 
@@ -18,13 +16,12 @@ impl DoStateCheckpoint {
     pub fn run(
         execution_output: &ExecutionOutput,
         parent_state_summary: &LedgerStateSummary,
-        persisted_state_summary: &StateProofFetcher,
         known_state_checkpoints: Option<Vec<Option<HashValue>>>,
     ) -> Result<StateCheckpointOutput> {
         let _timer = OTHER_TIMERS.timer_with(&["do_state_checkpoint"]);
 
         let state_summary = parent_state_summary.update(
-            persisted_state_summary,
+            &execution_output.state_proofs,
             execution_output.to_commit.state_update_refs(),
         )?;
 

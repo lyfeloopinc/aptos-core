@@ -262,7 +262,7 @@ impl LedgerState {
         updates: &StateUpdateRefs,
         reader: Arc<dyn DbReader>,
     ) -> Result<(LedgerState, ShardedStateCache)> {
-        let state_view = CachedStateView::new_impl(
+        let state_view = CachedStateView::new_without_proof_fetcher(
             StateViewId::Miscellaneous,
             reader,
             persisted_snapshot.clone(),
@@ -275,7 +275,7 @@ impl LedgerState {
             updates,
             state_view.memorized_reads(),
         );
-        let state_reads = state_view.into_memorized_reads();
+        let (state_reads, _state_proofs) = state_view.finish();
         Ok((updated, state_reads))
     }
 

@@ -7,7 +7,10 @@
 use crate::transactions_with_output::{TransactionsToKeep, TransactionsWithOutput};
 use aptos_drop_helper::DropHelper;
 use aptos_storage_interface::{
-    state_store::{state::LedgerState, state_view::cached_state_view::ShardedStateCache},
+    state_store::{
+        state::LedgerState, state_proof_fetcher::StateProofFetcher,
+        state_view::cached_state_view::ShardedStateCache,
+    },
     utils::planned::Planned,
 };
 use aptos_types::{
@@ -36,6 +39,7 @@ impl ExecutionOutput {
         to_retry: TransactionsWithOutput,
         result_state: LedgerState,
         state_reads: ShardedStateCache,
+        state_proofs: StateProofFetcher,
         block_end_info: Option<BlockEndInfo>,
         next_epoch_state: Option<EpochState>,
         subscribable_events: Planned<Vec<ContractEvent>>,
@@ -60,6 +64,7 @@ impl ExecutionOutput {
             to_retry,
             result_state,
             state_reads,
+            state_proofs,
             block_end_info,
             next_epoch_state,
             subscribable_events,
@@ -75,6 +80,7 @@ impl ExecutionOutput {
             to_discard: TransactionsWithOutput::new_empty(),
             to_retry: TransactionsWithOutput::new_empty(),
             state_reads: ShardedStateCache::new_empty(state.version()),
+            state_proofs: StateProofFetcher::new_dummy(),
             result_state: state,
             block_end_info: None,
             next_epoch_state: None,
@@ -94,6 +100,7 @@ impl ExecutionOutput {
             to_retry: TransactionsWithOutput::new_empty(),
             result_state: LedgerState::new_empty(),
             state_reads: ShardedStateCache::new_empty(None),
+            state_proofs: StateProofFetcher::new_dummy(),
             block_end_info: None,
             next_epoch_state: None,
             subscribable_events: Planned::ready(vec![]),
@@ -114,6 +121,7 @@ impl ExecutionOutput {
             to_retry: TransactionsWithOutput::new_empty(),
             result_state: self.result_state.clone(),
             state_reads: ShardedStateCache::new_empty(self.next_version().checked_sub(1)),
+            state_proofs: StateProofFetcher::new_dummy(),
             block_end_info: None,
             next_epoch_state: self.next_epoch_state.clone(),
             subscribable_events: Planned::ready(vec![]),
@@ -156,6 +164,8 @@ pub struct Inner {
     /// State items read during execution, useful for calculating the state storge usage and
     /// indices used by the db pruner.
     pub state_reads: ShardedStateCache,
+    /// State proofs pre-fetched during execution, for calculating the state summary.
+    pub state_proofs: StateProofFetcher,
 
     /// Optional StateCheckpoint payload
     pub block_end_info: Option<BlockEndInfo>,

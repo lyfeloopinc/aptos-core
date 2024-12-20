@@ -6,6 +6,7 @@ use crate::{
     state_store::{
         state::State,
         state_delta::StateDelta,
+        state_proof_fetcher::StateProofFetcher,
         state_update_refs::{BatchedStateUpdateRefs, StateUpdateRefs},
         state_view::db_state_view::DbStateView,
         versioned_state_value::StateCacheEntry,
@@ -87,6 +88,9 @@ pub struct CachedStateView {
 
     /// State values (with update versions) read across the lifetime of the state view.
     memorized: ShardedStateCache,
+
+    /// Optionally, prefetch state proofs
+    proof_fetcher: Option<StateProofFetcher>,
 }
 
 impl Debug for CachedStateView {
@@ -101,20 +105,38 @@ impl CachedStateView {
     /// latest one preceding `next_version`
     pub fn new(id: StateViewId, reader: Arc<dyn DbReader>, state: State) -> StateViewResult<Self> {
         let persisted_state = reader.get_persisted_state()?;
-        Ok(Self::new_impl(id, reader, persisted_state, state))
+        let proof_fetcher = StateProofFetcher::new_persisted(reader.clone())?;
+        Ok(Self::new_impl(
+            id,
+            reader,
+            persisted_state,
+            state,
+            Some(proof_fetcher),
+        ))
     }
 
-    pub fn new_impl(
+    pub fn new_without_proof_fetcher(
         id: StateViewId,
         reader: Arc<dyn DbReader>,
         persisted_state: State,
         state: State,
+    ) -> Self {
+        Self::new_impl(id, reader, persisted_state, state, None)
+    }
+
+    fn new_impl(
+        id: StateViewId,
+        reader: Arc<dyn DbReader>,
+        persisted_state: State,
+        state: State,
+        proof_fetcher: Option<StateProofFetcher>,
     ) -> Self {
         Self {
             id,
             reader,
             memorized: ShardedStateCache::new_empty(state.version()),
             speculative: state.into_delta(persisted_state),
+            proof_fetcher,
         }
     }
 
@@ -127,6 +149,7 @@ impl CachedStateView {
             reader: Arc::new(DummyDbReader),
             memorized: ShardedStateCache::new_empty(None),
             speculative: state.make_delta(state),
+            proof_fetcher: None,
         }
     }
 
@@ -166,15 +189,16 @@ impl CachedStateView {
     }
 
     /// Consumes `Self` and returns the state and all the memorized state reads.
-    pub fn into_memorized_reads(self) -> ShardedStateCache {
+    pub fn finish(self) -> (ShardedStateCache, Option<StateProofFetcher>) {
         let Self {
             id: _,
             reader: _,
             speculative: _,
             memorized,
+            proof_fetcher,
         } = self;
 
-        memorized
+        (memorized, proof_fetcher)
     }
 
     fn base_version(&self) -> Option<Version> {

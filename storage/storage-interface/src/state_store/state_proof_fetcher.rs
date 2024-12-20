@@ -13,7 +13,7 @@ use aptos_vm::AptosVM;
 use derive_more::Deref;
 use once_cell::sync::Lazy;
 use once_map::OnceMap;
-use std::sync::Arc;
+use std::{fmt::Formatter, sync::Arc};
 
 static IO_POOL: Lazy<Arc<rayon::ThreadPool>> = Lazy::new(|| {
     Arc::new(
@@ -46,6 +46,10 @@ impl StateProofFetcher {
             db,
             memorized_proofs: OnceMap::new(),
         }
+    }
+
+    pub fn new_dummy() -> Self {
+        todo!()
     }
 
     fn root_hash(&self) -> HashValue {
@@ -95,5 +99,11 @@ impl ProofRead for StateProofFetcher {
     fn get_proof(&self, key: HashValue, root_depth: usize) -> Option<&SparseMerkleProofExt> {
         self.schedule_get_proof_once(key, root_depth)
             .map(|planned| planned.wait(Some("state_proof_wait")))
+    }
+}
+
+impl std::fmt::Debug for StateProofFetcher {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "StateProofFetcher {{ .. }}")
     }
 }
