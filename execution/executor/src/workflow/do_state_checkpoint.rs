@@ -8,8 +8,8 @@ use aptos_executor_types::{
     execution_output::ExecutionOutput, state_checkpoint_output::StateCheckpointOutput,
 };
 use aptos_metrics_core::TimerHelper;
-use aptos_storage_interface::state_store::state_summary::{
-    LedgerStateSummary, StateProofFetcher,
+use aptos_storage_interface::state_store::{
+    state_proof_fetcher::StateProofFetcher, state_summary::LedgerStateSummary,
 };
 
 pub struct DoStateCheckpoint;

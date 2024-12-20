@@ -51,7 +51,8 @@ use aptos_storage_interface::{
     db_ensure as ensure, db_other_bail as bail,
     state_store::{
         state::{LedgerState, State},
-        state_summary::{StateProofFetcher, StateSummary},
+        state_proof_fetcher::StateProofFetcher,
+        state_summary::StateSummary,
         state_update_refs::{PerVersionStateUpdateRefs, StateUpdateRefs},
         state_view::cached_state_view::{ShardedStateCache, StateCacheShard},
         state_with_summary::{LedgerStateWithSummary, StateWithSummary},
@@ -1261,7 +1262,7 @@ mod test_only {
     use aptos_crypto::HashValue;
     use aptos_schemadb::SchemaBatch;
     use aptos_storage_interface::state_store::{
-        state_summary::StateProofFetcher, state_update_refs::StateUpdateRefs,
+        state_proof_fetcher::StateProofFetcher, state_update_refs::StateUpdateRefs,
         state_with_summary::LedgerStateWithSummary,
     };
     use aptos_types::{

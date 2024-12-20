@@ -8,7 +8,7 @@ use crate::types::partial_state_compute_result::PartialStateComputeResult;
 use anyhow::Result;
 use aptos_executor_types::execution_output::ExecutionOutput;
 use aptos_storage_interface::{
-    state_store::state_summary::StateProofFetcher, DbReader, LedgerSummary,
+    state_store::state_proof_fetcher::StateProofFetcher, DbReader, LedgerSummary,
 };
 use do_ledger_update::DoLedgerUpdate;
 use do_state_checkpoint::DoStateCheckpoint;

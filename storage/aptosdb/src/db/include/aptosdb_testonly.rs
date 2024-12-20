@@ -5,7 +5,7 @@ use aptos_config::config::{BUFFERED_STATE_TARGET_ITEMS_FOR_TEST, DEFAULT_MAX_NUM
 use std::default::Default;
 use aptos_types::transaction::{TransactionStatus, TransactionToCommit};
 use aptos_executor_types::transactions_with_output::TransactionsToKeep;
-use aptos_storage_interface::state_store::state_summary::StateProofFetcher;
+use aptos_storage_interface::state_store::state_proof_fetcher::StateProofFetcher;
 
 impl AptosDB {
     /// This opens db in non-readonly mode, without the pruner.
