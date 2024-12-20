@@ -49,7 +49,10 @@ impl StateProofFetcher {
     }
 
     pub fn new_dummy() -> Self {
-        todo!()
+        struct Dummy;
+        impl DbReader for Dummy {}
+
+        Self::new(StateSummary::new_empty(), Arc::new(Dummy))
     }
 
     fn root_hash(&self) -> HashValue {
